@@ -1,0 +1,6 @@
+1. Sigue la configuración de Firebase en README.md.
+2. Reemplaza los valores REEMPLAZAR_... de firebase-config.js.
+3. Publica firestore.rules en Firebase.
+4. Sube esta carpeta a un repositorio nuevo de GitHub.
+5. Importa el repositorio desde Vercel y publica.
+6. Agrega el dominio Vercel a Authentication > Authorized domains.

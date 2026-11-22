@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#193e2c">
+<meta name="description" content="Consulta la financiación de agroinsumos y simula la liquidación de tu cosecha con AgroCiclo del Sinú.">
+<title>AgroCiclo del Sinú S.A.S.</title>
+<link rel="icon" href="/logo.webp">
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">{"imports":{"firebase/app":"https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js","firebase/auth":"https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js","firebase/firestore":"https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js"}}</script>
+<script type="module" src="/app.js"></script>
+</head>
+<body>
+<header class="top"><div class="wrap top-inner">
+<a href="#inicio" class="brand" aria-label="Inicio de AgroCiclo del Sinú"><span class="brand-icon" aria-hidden="true"></span><span>AgroCiclo<strong> del Sinú</strong><small>S.A.S. · Córdoba, Colombia</small></span></a>
+<nav aria-label="Navegación principal"><a href="#inicio" data-tab="inicio">Para agricultores</a><a href="#equipo" data-tab="equipo">Acceso del equipo</a></nav>
+</div></header>
+<main class="wrap">
+<section id="farmer">
+  <div class="hero">
+    <div class="hero-content"><p class="eyebrow"><span></span> AGROCICLO DEL SINÚ</p><h1>Insumos hoy.<br><em>Paga con tu cosecha.</em></h1>
+    <p>Consulta si puedes solicitar financiación de agroinsumos para tu cultivo. Cuando AgroCiclo compra tu cosecha, descuenta lo financiado y te entrega el saldo.</p>
+    <a class="button primary" href="#consulta">Consultar si puedo aplicar</a></div>
+    <div class="hero-art" role="img" aria-label="Agricultor revisando el maíz en un cultivo de Córdoba"></div>
+  </div>
+  <div class="steps" aria-label="Cómo funciona">
+   <article><span class="step-mark" aria-hidden="true">01</span><div><h2>Consulta</h2><p>Cuéntanos sobre tu cultivo.</p></div></article>
+   <article><span class="step-mark" aria-hidden="true">02</span><div><h2>Solicita insumos</h2><p>AgroCiclo revisa tu caso.</p></div></article>
+   <article><span class="step-mark" aria-hidden="true">03</span><div><h2>Liquida tu cosecha</h2><p>Recibe el saldo después del descuento.</p></div></article>
+  </div>
+  <div class="split" id="consulta">
+    <section class="card">
+     <p class="eyebrow section-kicker">FINANCIACIÓN DE AGROINSUMOS</p>
+     <h2>Consulta si puedes aplicar</h2>
+     <p class="muted">Completa los datos de tu cultivo para recibir una orientación inicial.</p>
+     <form id="eligibility" class="fields">
+       <label>Municipio<select name="town" class="towns" required></select></label>
+       <label>Cultivo<input name="crop" required maxlength="60" placeholder="Ej. maíz"></label>
+       <label>Área sembrada (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required placeholder="Ej. 2"></label>
+       <label>Agroinsumos que necesitas<input name="supplies" required maxlength="140" placeholder="Ej. semillas y fertilizante"></label>
+       <button class="button forest wide" type="submit">Consultar disponibilidad</button>
+     </form>
+     <div id="eligibility-result" class="result" role="status" hidden></div>
+     <a id="request-link" class="button outline" target="_blank" rel="noopener noreferrer" hidden>Enviar solicitud por WhatsApp</a>
+    </section>
+    <aside class="side">
+     <section class="contact card"><p class="eyebrow section-kicker">CONTACTO</p><h2>Habla con AgroCiclo</h2><p class="muted">Pregúntanos por la financiación, los agroinsumos o la compra de tu cosecha.</p>
+       <div id="social-links" class="social"></div>
+       <p id="social-status" class="small muted" hidden></p>
+     </section>
+     <section class="card"><p class="eyebrow section-kicker">HAZ TUS CUENTAS</p><h2>Calcula el saldo de tu cosecha</h2><form id="simulation" class="fields two">
+      <label>Valor de la cosecha (COP)<input name="gross" type="number" min="1" max="999999999999" step="1" required placeholder="Ej. 2.000.000"></label>
+      <label>Saldo de insumos (COP)<input name="balance" type="number" min="0" max="999999999999" step="1" required placeholder="Ej. 350.000"></label>
+      <button class="button outline wide" type="submit">Calcular saldo</button>
+      </form><div id="simulation-result" class="result" role="status" hidden></div>
+     </section>
+    </aside>
+  </div>
+</section>
+<section id="team" hidden>
+ <div class="team-heading"><p class="eyebrow section-kicker">OPERACIÓN</p><h1>Panel del equipo</h1><p class="muted">Área privada para el equipo AgroCiclo.</p></div>
+ <section id="team-login" class="card login-card"><p class="eyebrow section-kicker">ACCESO PRIVADO</p><h2>Iniciar sesión</h2><p class="muted">Ingresa con tu cuenta autorizada del equipo para continuar.</p><form id="team-login-form" class="fields"><label>Correo del equipo<input name="email" type="email" required autocomplete="username" placeholder="Acceso mediante cuenta Google"></label><button class="button forest wide" type="submit">Continuar con Google institucional</button></form><p id="login-status" class="small muted" role="status">Solo se permite el acceso con una cuenta @unicartagena.edu.co.</p></section>
+ <div class="totals" id="totals"></div>
+ <div class="team-grid">
+  <div class="team-toolbar"><p id="team-user" class="muted small"></p><button id="logout" class="button outline" type="button">Cerrar sesión</button></div>
+  <section class="card"><h2>Registrar productor</h2><form id="add-producer" class="fields">
+   <label>Nombre o alias<input name="name" maxlength="80" required></label><label>Municipio<select name="town" class="towns" required></select></label>
+   <label>Cultivo<input name="crop" maxlength="60" required></label><label>Área (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required></label>
+   <button class="button forest wide" type="submit">Guardar productor</button>
+  </form></section>
+  <section class="card"><h2>Registrar financiación</h2><form id="add-advance" class="fields">
+   <label class="wide">Productor<select name="producer" class="producers" required></select></label>
+   <label class="wide">Insumo o concepto<input name="description" maxlength="100" required></label>
+   <label class="wide">Monto financiado (COP)<input name="amount" type="number" min="1" max="999999999999" step="1" required></label>
+   <button class="button forest wide" type="submit">Guardar financiación</button>
+  </form></section>
+  <section class="card"><h2>Liquidar cosecha</h2><form id="add-harvest" class="fields">
+   <label class="wide">Productor<select name="producer" class="producers" required></select></label>
+   <label>Peso (kg)<input name="kg" type="number" min="0.01" max="10000000" step="0.01" required></label>
+   <label>Precio por kg (COP)<input name="price" type="number" min="1" max="99999999" step="1" required></label>
+   <output id="harvest-preview" class="muted small wide"></output>
+   <button class="button forest wide" type="submit">Registrar liquidación</button>
+  </form></section>
+ </div>
+ <p id="team-status" class="status" role="status"></p>
+ <section class="card team-history"><h2>Productores y saldos pendientes</h2><div id="producer-table" class="table-wrap"></div></section>
+ <section class="card team-history"><h2>Historial de movimientos</h2><div id="history-table" class="table-wrap"></div></section>
+</section>
+</main>
+<footer><div class="wrap footer-inner"><span>AgroCiclo del Sinú S.A.S.</span><span>Córdoba, Colombia</span></div></footer>
+</body>
+</html>
