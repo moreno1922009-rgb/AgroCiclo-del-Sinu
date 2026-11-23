@@ -105,6 +105,7 @@ module.exports = async function handler(request, response) {
       body: JSON.stringify({
         from: "AgroCiclo del Sinú <" + fromEmail + ">",
         to: [to],
+        reply_to: "dmorenom3@unicartagena.edu.co",
         subject: "Actualización de tu solicitud en AgroCiclo",
         html,
         text,
