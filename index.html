@@ -13,10 +13,29 @@
 </head>
 <body>
 <header class="top"><div class="wrap top-inner">
-<a href="#inicio" class="brand" aria-label="Inicio de AgroCiclo del Sinú"><span class="brand-icon" aria-hidden="true"></span><span>AgroCiclo<strong> del Sinú</strong><small>S.A.S. · Córdoba, Colombia</small></span></a>
-<nav aria-label="Navegación principal"><a href="#inicio" data-tab="inicio">Para agricultores</a><a href="#equipo" data-tab="equipo">Acceso del equipo</a></nav>
+<a href="#" class="brand" aria-label="AgroCiclo del Sinú"><span class="brand-icon" aria-hidden="true"></span><span>AgroCiclo<strong> del Sinú</strong><small>S.A.S. · Córdoba, Colombia</small></span></a>
+<div class="session-bar" id="session-bar" hidden><span id="session-name"></span><button id="logout" class="button outline" type="button">Cerrar sesión</button></div>
 </div></header>
 <main class="wrap">
+<section id="auth-screen" class="auth-layout">
+ <div class="auth-visual">
+  <div class="auth-copy"><p class="eyebrow"><span></span> AGROCICLO DEL SINÚ · CÓRDOBA</p><h1>Crece con tu tierra.<br><em>Avanza con tu cosecha.</em></h1><p>Financiación de agroinsumos pensada para acompañar el trabajo del campo, desde la siembra hasta la venta de tu cosecha.</p>
+   <div class="auth-points"><span><b>01</b> Consulta tu opción</span><span><b>02</b> Solicita tus insumos</span><span><b>03</b> Liquida al cosechar</span></div>
+  </div>
+  <div class="auth-photo" role="img" aria-label="Cultivo agrícola al amanecer"></div>
+  <span class="sun-glow" aria-hidden="true"></span><span class="leaf leaf-one" aria-hidden="true"></span><span class="leaf leaf-two" aria-hidden="true"></span>
+ </div>
+ <section class="card sign-in-card"><span class="sign-in-icon" aria-hidden="true">✦</span><p class="eyebrow section-kicker">BIENVENIDO A AGROCICLO</p><h2>Tu próximo paso empieza aquí</h2><p class="muted">Inicia sesión con Google para consultar nuestros servicios y las herramientas para tu cultivo.</p>
+  <button id="google-signin" class="button forest google-button" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v9.02h12.88a11 11 0 0 1-4.77 7.22l7.73 5.99c4.51-4.16 7.14-10.29 7.14-17.68Z"/><path fill="#FBBC05" d="M10.54 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.79-4.59l-7.98-6.19A23.95 23.95 0 0 0 0 24c0 3.9.94 7.59 2.56 10.78l7.98-6.19Z"/><path fill="#34A853" d="M24 48c6.47 0 11.9-2.13 15.86-5.78l-7.73-5.99c-2.14 1.43-4.87 2.27-8.13 2.27-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"/></svg>Continuar con Google</button>
+  <p class="small muted first-login-note">Si es tu primera vez, tu cuenta se crea al continuar.</p><p id="auth-status" class="small muted" role="status">Usa una cuenta de Google para acceder de forma segura.</p><div class="secure-note"><span aria-hidden="true">🔒</span> Tu acceso se protege con Firebase Authentication</div>
+ </section>
+</section>
+<section id="role-screen" class="role-screen" hidden>
+ <div class="role-heading"><p class="eyebrow section-kicker">ACCESO INSTITUCIONAL</p><h1>Hola, <span id="role-name">equipo</span></h1><p class="muted">Tu cuenta institucional tiene acceso al espacio del equipo. También puedes continuar a las herramientas para agricultores.</p></div>
+ <div class="role-cards"><button id="open-team" class="role-card role-team" type="button"><span class="role-icon" aria-hidden="true">⌘</span><span class="eyebrow">OPERACIÓN INTERNA</span><strong>Panel del equipo</strong><span>Productores, financiaciones y liquidaciones.</span><b>Entrar al panel <i aria-hidden="true">→</i></b></button><button id="open-farmer" class="role-card role-farmer" type="button"><span class="role-icon" aria-hidden="true">✳</span><span class="eyebrow">SERVICIOS AGRO</span><strong>Continuar como agricultor</strong><span>Consulta financiación y calcula tu cosecha.</span><b>Ver herramientas <i aria-hidden="true">→</i></b></button></div>
+</section>
+<section id="farmer-app" hidden>
+<div class="app-welcome"><div><p class="eyebrow section-kicker">TU ESPACIO AGROCICLO</p><h1>Bienvenido, <span id="farmer-name">agricultor</span></h1><p class="muted">Consulta opciones para tus cultivos y organiza tus cuentas.</p></div><a class="button forest" href="#consulta">Explorar servicios <span aria-hidden="true">↓</span></a></div>
 <section id="farmer">
   <div class="hero">
     <div class="hero-content"><p class="eyebrow"><span></span> AGROCICLO DEL SINÚ</p><h1>Insumos hoy.<br><em>Paga con tu cosecha.</em></h1>
@@ -58,12 +77,13 @@
     </aside>
   </div>
 </section>
+</section>
 <section id="team" hidden>
  <div class="team-heading"><p class="eyebrow section-kicker">OPERACIÓN</p><h1>Panel del equipo</h1><p class="muted">Área privada para el equipo AgroCiclo.</p></div>
- <section id="team-login" class="card login-card"><p class="eyebrow section-kicker">ACCESO PRIVADO</p><h2>Iniciar sesión</h2><p class="muted">Ingresa con tu cuenta autorizada del equipo para continuar.</p><form id="team-login-form" class="fields"><label>Correo del equipo<input name="email" type="email" required autocomplete="username" placeholder="Acceso mediante cuenta Google"></label><button class="button forest wide" type="submit">Continuar con Google institucional</button></form><p id="login-status" class="small muted" role="status">Solo se permite el acceso con una cuenta @unicartagena.edu.co.</p></section>
+ <div class="team-toolbar"><p id="team-user" class="muted small"></p><button id="back-to-roles" class="button outline" type="button">Cambiar espacio</button></div>
+ <div id="team-dashboard" hidden>
  <div class="totals" id="totals"></div>
  <div class="team-grid">
-  <div class="team-toolbar"><p id="team-user" class="muted small"></p><button id="logout" class="button outline" type="button">Cerrar sesión</button></div>
   <section class="card"><h2>Registrar productor</h2><form id="add-producer" class="fields">
    <label>Nombre o alias<input name="name" maxlength="80" required></label><label>Municipio<select name="town" class="towns" required></select></label>
    <label>Cultivo<input name="crop" maxlength="60" required></label><label>Área (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required></label>
@@ -86,6 +106,7 @@
  <p id="team-status" class="status" role="status"></p>
  <section class="card team-history"><h2>Productores y saldos pendientes</h2><div id="producer-table" class="table-wrap"></div></section>
  <section class="card team-history"><h2>Historial de movimientos</h2><div id="history-table" class="table-wrap"></div></section>
+ </div>
 </section>
 </main>
 <footer><div class="wrap footer-inner"><span>AgroCiclo del Sinú S.A.S.</span><span>Córdoba, Colombia</span></div></footer>
