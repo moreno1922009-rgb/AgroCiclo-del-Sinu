@@ -36,6 +36,7 @@
 </section>
 <section id="farmer-app" hidden>
 <div class="app-welcome"><div><p class="eyebrow section-kicker">TU ESPACIO AGROCICLO</p><h1>Bienvenido, <span id="farmer-name">agricultor</span></h1><p class="muted">Consulta opciones para tus cultivos y organiza tus cuentas.</p></div><a class="button forest" href="#consulta">Explorar servicios <span aria-hidden="true">↓</span></a></div>
+<section class="card farmer-requests"><div class="inbox-heading"><div><p class="eyebrow section-kicker">SEGUIMIENTO PERSONAL</p><h2>Mis solicitudes</h2><p class="muted small">Consulta el avance y la respuesta del equipo desde aquí.</p></div></div><div id="farmer-requests-list" aria-live="polite"><p class="muted">Cargando tus solicitudes…</p></div></section>
 <section id="farmer">
   <div class="hero">
     <div class="hero-content"><p class="eyebrow"><span></span> AGROCICLO DEL SINÚ</p><h1>Insumos hoy.<br><em>Paga con tu cosecha.</em></h1>
@@ -63,9 +64,9 @@
        <label>Cultivo<select name="crop" class="crop-select" required></select></label>
        <label class="crop-other-field" hidden>¿Cuál cultivo?<input name="cropOther" maxlength="60" placeholder="Escribe el nombre del cultivo"></label>
        <label>Área sembrada (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required placeholder="Ej. 2"></label>
-       <fieldset class="product-fieldset wide"><legend>Productos e insumos que necesitas</legend><div id="farmer-products" class="product-options"></div><p class="small muted">Elige uno o varios. Las opciones son una guía; la disponibilidad se confirma con el equipo.</p></fieldset>
-       <label class="consent-row wide"><input id="farmer-consent" name="consent" type="checkbox" required><span>Autorizo a AgroCiclo a registrar estos datos y usarlos para responder esta solicitud.</span></label>
-       <p class="small muted data-note">Usaremos tu nombre y correo de Google junto con la información del cultivo. Solo el equipo autorizado podrá consultar la solicitud.</p>
+       <fieldset class="product-fieldset wide"><legend>Productos e insumos que necesitas</legend><div id="farmer-products" class="product-options"></div><p class="small muted">Marca los insumos que necesitas, indica cantidades y unidades. La disponibilidad se confirma con el equipo.</p></fieldset>
+       <label class="consent-row wide"><input id="farmer-consent" name="consent" type="checkbox" required><span>Autorizo a AgroCiclo a registrar estos datos y a enviar la respuesta de esta solicitud al correo de mi cuenta Google.</span></label>
+       <p class="small muted data-note">Usaremos tu nombre, el correo de Google y los datos del cultivo para revisar la solicitud y enviarte actualizaciones de estado. Solo el equipo autorizado podrá consultarla.</p>
        <button class="button forest wide" type="submit">Registrar solicitud</button>
      </form>
      <div id="eligibility-result" class="result" role="status" hidden></div>

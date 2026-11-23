@@ -39,6 +39,18 @@ Abre <http://localhost:8000>. Para iniciar sesión en local, agrega `localhost` 
 
 ## Solicitudes, chat y WhatsApp
 
-El formulario registra la solicitud en Firestore después de que el agricultor acepta el aviso de uso de datos. El equipo institucional puede leerla y cambiar su estado; los agricultores no pueden consultar solicitudes ajenas. Los productos sugeridos son opciones generales, no recomendaciones técnicas de dosis o aplicación.
+El formulario registra la solicitud en Firestore después de que el agricultor acepta el aviso de uso de datos y captura la cantidad y unidad de cada insumo. Cada agricultor puede consultar únicamente sus propias solicitudes; el equipo institucional ve la bandeja completa y registra el estado, la decisión y una respuesta breve. Los productos sugeridos son opciones generales, no recomendaciones técnicas de dosis o aplicación.
 
 El chat y la presencia se comparten en tiempo real únicamente entre cuentas verificadas `@unicartagena.edu.co`. Cada miembro puede editar o eliminar sus propios mensajes; el gerente puede borrar mensajes de cualquier miembro. El chat se abre desde un botón en el panel. El botón de WhatsApp prepara un mensaje y el agricultor confirma el envío desde WhatsApp.
+
+
+## Respuesta de solicitudes por correo
+
+El equipo registra la decisión **Aplica** o **No aplica** y una respuesta opcional desde la bandeja. La solicitud queda visible para el agricultor, y el sistema intenta enviar el resultado al correo usado para iniciar sesión con Google. Si el proveedor no está listo, se conserva la decisión y el equipo puede reintentar el envío desde la misma fila.
+
+Para activar la entrega automática, configura en Vercel las variables de entorno de producción y vista previa:
+
+- `RESEND_API_KEY`: clave privada creada desde el servidor de Resend. No debe guardarse en el repositorio ni compartirse en el chat.
+- `RESEND_FROM_EMAIL`: dirección de un dominio verificado en Resend, por ejemplo `notificaciones@tudominio.com`. Verifica el dominio y su autenticación de correo antes de usarlo.
+
+Después de añadir ambas variables, vuelve a desplegar el proyecto. Sin ellas, las decisiones se guardan normalmente, pero el correo muestra el estado pendiente y el botón permite reintentarlo.

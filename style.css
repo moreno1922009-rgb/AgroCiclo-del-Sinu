@@ -108,3 +108,25 @@ body{background:radial-gradient(ellipse at 6% 2%,#e9f1df 0,transparent 36%),var(
 @media(max-width:900px){.quote-line{grid-template-columns:1fr 1fr}.quote-line-total{padding:0}.chat-head-actions{justify-content:flex-start}}
 @media(max-width:560px){.team-toolbar-actions{width:100%}.team-toolbar-actions .button{flex:1}.inbox-heading{align-items:flex-start;flex-direction:column}.request-filters{display:grid;grid-template-columns:1fr 1fr}.quote-line{grid-template-columns:1fr}.quote-client{grid-template-columns:1fr}.quote-document{padding:16px}.chat-head-actions{width:100%;justify-content:space-between}}
 @media print{body *{visibility:hidden!important}#quote-document,#quote-document *{visibility:visible!important}#quote-document{display:block!important;position:absolute;left:0;top:0;width:100%;margin:0;padding:24px;border:0;border-radius:0;box-shadow:none;background:#fff;color:#111}#quote-document[hidden]{display:none!important}.quote-document table{page-break-inside:avoid}}
+
+/* Cantidades por producto en la solicitud del agricultor. */
+.product-options{grid-template-columns:1fr;gap:9px}
+.product-option-row{display:grid;grid-template-columns:minmax(0,1fr) 110px 108px;gap:8px;align-items:center;padding:9px;border:1px solid #e1e9dd;border-radius:10px;background:#f8faf6}
+.product-option-row>label{display:flex;align-items:flex-start;gap:9px;margin:0;font-size:.9rem;font-weight:600;line-height:1.35}
+.product-option-row>label input{width:18px;min-height:18px;flex:none;margin:2px 0 0;accent-color:var(--forest)}
+.product-option-row>input,.product-option-row>select{width:100%;min-width:0;min-height:40px;padding:7px 9px;border:1px solid #acbfb0;border-radius:8px;background:white;color:var(--ink);font:inherit}
+.product-option-row>input:disabled,.product-option-row>select:disabled{opacity:.48}
+.farmer-requests{margin:22px 0;border-top:4px solid #78a64a}
+.farmer-request-item{padding:14px 0;border-bottom:1px solid var(--border)}
+.farmer-request-item:last-child{border-bottom:0}
+.farmer-request-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.request-pill{padding:6px 10px;border-radius:99px;background:#fff3d5;color:#755312;font-size:.8rem;font-weight:800}
+.request-pill.en_proceso{background:#e5efff;color:#224c7e}
+.request-pill.atendida{background:#e3f3e5;color:#245e30}
+.farmer-request-item p{margin:6px 0}
+.request-outcome{font-weight:750;color:var(--forest)}
+.resolve-request-form{display:grid;gap:7px;min-width:190px}
+.resolve-request-form select,.resolve-request-form textarea{width:100%;padding:7px 9px;border:1px solid #acbfb0;border-radius:8px;font:inherit}
+.resolve-request-form textarea{resize:vertical}
+.small-button{padding:8px 11px;font-size:.85rem}
+@media(max-width:620px){.product-option-row{grid-template-columns:minmax(0,1fr) 82px 84px;padding:7px;gap:5px}.product-option-row>label{font-size:.82rem}.farmer-request-head{align-items:flex-start;flex-direction:column}}

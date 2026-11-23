@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, onSnapshot, limit, setDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, onSnapshot, limit, setDoc, where } from "firebase/firestore";
 import { firebaseConfig } from "./firebase-config.js";
 
 const contacts = { instagram: "https://www.instagram.com/agroc_iclo/", whatsapp: "573243175381" };
@@ -24,6 +24,8 @@ let signedInUser = null;
 let producers = [];
 let entries = [];
 let applications = [];
+let farmerApplications = [];
+let stopFarmerListener = null;
 let presenceRows = [];
 let stopChatListener = null;
 let stopPresenceListener = null;
@@ -43,7 +45,20 @@ function productsForCrop(value){return productCatalog[cropKey(value)]||productCa
 function resolvedCrop(form,data){return data.crop==="otro"?(data.cropOther||"").trim():data.crop;}
 function bindCropField(form){const select=form.querySelector(".crop-select"),wrap=form.querySelector(".crop-other-field"),input=wrap?.querySelector("input");if(!select)return;select.replaceChildren(option("Selecciona un cultivo",""),...crops.map(([value,label])=>option(label,value)));const sync=()=>{const other=select.value==="otro";if(wrap)wrap.hidden=!other;if(input)input.required=other;};select.addEventListener("change",sync);sync();}
 document.querySelectorAll("form").forEach(form=>bindCropField(form));
-function renderFarmerProducts(){const form=$("#eligibility"),container=$("#farmer-products");if(!form||!container)return;const crop=form.querySelector("[name=crop]").value,cropValue=crop==="otro"?form.querySelector("[name=cropOther]").value:crop;container.replaceChildren();productsForCrop(cropValue).forEach((label,index)=>{const id="farmer-product-"+index,wrap=document.createElement("label"),input=document.createElement("input");input.type="checkbox";input.name="products";input.value=label;input.id=id;const text=document.createElement("span");text.textContent=label;wrap.htmlFor=id;wrap.append(input,text);container.append(wrap);});}
+function renderFarmerProducts(){
+ const form=$("#eligibility"),container=$("#farmer-products");if(!form||!container)return;
+ const crop=form.querySelector("[name=crop]").value,cropValue=crop==="otro"?form.querySelector("[name=cropOther]").value:crop;
+ container.replaceChildren();
+ productsForCrop(cropValue).forEach((label,index)=>{
+  const row=document.createElement("div");row.className="product-option-row";
+  const choice=document.createElement("label"),input=document.createElement("input");input.type="checkbox";input.name="products";input.value=label;input.id="farmer-product-"+index;
+  const text=document.createElement("span");text.textContent=label;choice.htmlFor=input.id;choice.append(input,text);
+  const quantity=document.createElement("input");quantity.type="number";quantity.name="quantity";quantity.min="0.01";quantity.max="1000000";quantity.step="0.01";quantity.placeholder="Cantidad";quantity.disabled=true;quantity.setAttribute("aria-label","Cantidad de "+label);
+  const unit=document.createElement("select");unit.name="unit";unit.disabled=true;unit.setAttribute("aria-label","Unidad de "+label);["kg","bulto","litro","bolsa","unidad","tonelada"].forEach(value=>unit.append(option(value)));
+  input.addEventListener("change",()=>{quantity.disabled=!input.checked;unit.disabled=!input.checked;quantity.required=input.checked;if(!input.checked)quantity.value="";});
+  row.append(choice,quantity,unit);container.append(row);
+ });
+}
 function renderTeamProducts(){const select=$("#team-product-select"),producerId=$("#add-advance [name=producer]")?.value,producer=producers.find(p=>p.id===producerId);if(!select)return;select.replaceChildren(option(producer?"Selecciona un producto":"Selecciona primero un productor",""),...(producer?productsForCrop(producer.crop).map(value=>option(value)):[]),...(producer?[option("Otro insumo o concepto","__otro")]:[]));toggleCustomProduct();}
 function toggleCustomProduct(){const select=$("#team-product-select"),wrap=$("#custom-product-wrap"),input=wrap?.querySelector("input"),other=select?.value==="__otro";if(wrap)wrap.hidden=!other;if(input)input.required=Boolean(other);}
 document.querySelectorAll(".towns").forEach((select) => {
@@ -91,19 +106,49 @@ $("#social-links").append(social("Instagram","instagram",contacts.instagram),soc
 
 function showResult(selector, message) { const node=$(selector);node.textContent=message;node.hidden=false; }
 $("#eligibility").addEventListener("submit",async(event)=>{
- event.preventDefault();const form=event.currentTarget,data=Object.fromEntries(new FormData(form)),selectedProducts=[...form.querySelectorAll('input[name="products"]:checked')].map(input=>input.value),crop=resolvedCrop(form,data);
+ event.preventDefault();const form=event.currentTarget,data=Object.fromEntries(new FormData(form)),selectedItems=[...form.querySelectorAll('input[name="products"]:checked')].map(input=>{const row=input.closest(".product-option-row");return {name:input.value,quantity:Number(row.querySelector('[name="quantity"]').value),unit:row.querySelector('[name="unit"]').value};}),selectedProducts=selectedItems.map(item=>item.name),crop=resolvedCrop(form,data);
  if(!signedInUser||!db){showResult("#eligibility-result","Inicia sesión para registrar tu solicitud.");return;}
- if(!selectedProducts.length){showResult("#eligibility-result","Selecciona al menos un producto o insumo.");return;}
+ if(!selectedItems.length||selectedItems.some(item=>!Number.isFinite(item.quantity)||item.quantity<=0)){showResult("#eligibility-result","Selecciona al menos un producto e indica una cantidad válida para cada uno.");return;}
  const button=form.querySelector('button[type="submit"]'),link=$("#request-link");button.disabled=true;button.textContent="Registrando solicitud…";link.hidden=true;
  try{
-  const request=await addDoc(collections("applications"),{uid:signedInUser.uid,name:(signedInUser.displayName||signedInUser.email||"Agricultor").slice(0,80),email:signedInUser.email,town:data.town,crop,hectares:Number(data.hectares),products:selectedProducts,status:"pendiente",consent:true,consentAt:serverTimestamp(),createdAt:serverTimestamp()});
+  const request=await addDoc(collections("applications"),{uid:signedInUser.uid,name:(signedInUser.displayName||signedInUser.email||"Agricultor").slice(0,80),email:signedInUser.email,town:data.town,crop,hectares:Number(data.hectares),products:selectedProducts,items:selectedItems,status:"pendiente",consent:true,consentAt:serverTimestamp(),createdAt:serverTimestamp()});
   const covered=towns.includes(data.town);showResult("#eligibility-result",(covered?"Tu municipio está en la zona inicial de atención. ":"Consulta por WhatsApp si podemos atender tu municipio. ")+"Solicitud registrada con código "+request.id+". El equipo podrá hacer seguimiento.");
-  link.href=whatsappLink("Hola, AgroCiclo. Quiero consultar financiación de agroinsumos.\\nCódigo de solicitud: "+request.id+"\\nNombre: "+(signedInUser.displayName||"Agricultor")+"\\nMunicipio: "+data.town+"\\nCultivo: "+crop+"\\nÁrea (ha): "+data.hectares+"\\nProductos: "+selectedProducts.join(", "));link.textContent="Abrir WhatsApp para enviar la solicitud";link.hidden=false;form.reset();renderFarmerProducts();
+  link.href=whatsappLink("Hola, AgroCiclo. Quiero consultar financiación de agroinsumos.\\nCódigo de solicitud: "+request.id+"\\nNombre: "+(signedInUser.displayName||"Agricultor")+"\\nMunicipio: "+data.town+"\\nCultivo: "+crop+"\\nÁrea (ha): "+data.hectares+"\\nProductos: "+selectedItems.map(item=>item.name+" — "+item.quantity+" "+item.unit).join(", "));link.textContent="Abrir WhatsApp para enviar la solicitud";link.hidden=false;form.reset();renderFarmerProducts();
  }catch(error){showResult("#eligibility-result",errorText(error));}
  finally{button.disabled=false;button.textContent="Registrar solicitud";}
 });
 $("#simulation").addEventListener("submit",(event)=>{event.preventDefault();const d=Object.fromEntries(new FormData(event.currentTarget));const gross=Number(d.gross),balance=Number(d.balance),deduction=Math.min(gross,balance);showResult("#simulation-result","Saldo estimado para el productor: "+money(gross-deduction)+"\nDescuento por insumos: "+money(deduction));});
 
+function startFarmerRequests(){
+ if(stopFarmerListener||!signedInUser||!db)return;
+ stopFarmerListener=onSnapshot(query(collections("applications"),where("uid","==",signedInUser.uid)),snapshot=>{
+  farmerApplications=snapshot.docs.map(docSnap=>({id:docSnap.id,...docSnap.data()})).sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));renderFarmerRequests();
+ },()=>{$("#farmer-requests-list").textContent="No se pudo cargar el seguimiento. Intenta recargar la página."});
+}
+function stopFarmerRequests(){if(stopFarmerListener)stopFarmerListener();stopFarmerListener=null;farmerApplications=[];}
+function renderFarmerRequests(){
+ const container=$("#farmer-requests-list");if(!container)return;container.replaceChildren();
+ if(!farmerApplications.length){const p=document.createElement("p");p.className="muted";p.textContent="Aún no tienes solicitudes. Cuando registres una, aquí verás su estado y la respuesta del equipo.";container.append(p);return;}
+ farmerApplications.forEach(application=>{
+  const card=document.createElement("article");card.className="farmer-request-item";
+  const head=document.createElement("div");head.className="farmer-request-head";
+  const title=document.createElement("strong");title.textContent=application.crop+" · "+application.town;
+  const status=document.createElement("span");status.className="request-pill "+(application.status||"pendiente");status.textContent=application.status==="atendida"?"Atendida":application.status==="en_proceso"?"En proceso":"Pendiente";
+  head.append(title,status);
+  const details=document.createElement("p");details.className="small muted";details.textContent=(application.createdAt?.toDate?.().toLocaleDateString("es-CO")||"Reciente")+" · "+application.hectares+" ha";
+  const items=document.createElement("p");items.className="small";const productText=(application.items||[]).map(item=>item.name+" · "+item.quantity+" "+item.unit);items.textContent=(productText.length?productText:(application.products||[])).join(", ");
+  card.append(head,details,items);
+  if(application.status==="atendida"){
+   const outcome=document.createElement("p");outcome.className="request-outcome";outcome.textContent=application.decision==="aplica"?"El equipo indica que tu solicitud aplica.":application.decision==="no_aplica"?"El equipo indica que tu solicitud no aplica.":"El equipo atendió tu solicitud.";
+   card.append(outcome);
+   if(application.resolutionNote){const note=document.createElement("p");note.className="small";note.textContent="Respuesta del equipo: "+application.resolutionNote;card.append(note);}
+   const contact=document.createElement("p");contact.className="small muted";contact.textContent=application.emailNoticeStatus==="enviado"?"Aviso enviado al correo de tu cuenta Google.":"Aviso por correo pendiente. El equipo puede contactarte también por WhatsApp.";card.append(contact);
+  } else {
+   const progress=document.createElement("p");progress.className="small muted";progress.textContent=application.status==="en_proceso"?"Un integrante del equipo está revisando tu solicitud.":"El equipo recibirá tu solicitud y la revisará.";card.append(progress);
+  }
+  container.append(card);
+ });
+}
 function errorText(error) {
  const messages={
   "auth/popup-closed-by-user":"Se cerró la ventana de Google antes de terminar.",
@@ -121,7 +166,7 @@ function readRows(name){return getDocs(query(collections(name),orderBy("createdA
 function balanceFor(id){return entries.reduce((sum,row)=>sum+(row.producerId===id?(row.type==="advance"?row.amount:-row.deduction):0),0);}
 function td(row,value){const cell=row.insertCell();cell.textContent=value;}
 function table(container,heads,rows,empty){if(!rows.length){container.textContent=empty;return;}const t=document.createElement("table"),h=t.createTHead().insertRow();heads.forEach(x=>{const th=document.createElement("th");th.textContent=x;h.append(th);});const b=t.createTBody();rows.forEach(values=>{const tr=b.insertRow();values.forEach(v=>td(tr,v));});container.replaceChildren(t);}
-const requestStatuses=[["pendiente","Pendiente"],["en_proceso","En proceso"],["atendida","Atendida"]];
+const requestStatuses=[["pendiente","Pendiente"],["en_proceso","En proceso"]];
 function renderApplications(){
  const container=$("#application-table"),counts={pendiente:0,en_proceso:0,atendida:0};
  applications.forEach(item=>counts[item.status||"pendiente"]=(counts[item.status||"pendiente"]||0)+1);
@@ -135,13 +180,26 @@ function renderApplications(){
  const shown=requestFilter==="todas"?applications:applications.filter(item=>(item.status||"pendiente")===requestFilter);
  if(!shown.length){container.textContent=requestFilter==="pendiente"?"No hay solicitudes pendientes. Las nuevas aparecerán aquí.":"No hay solicitudes en esta categoría.";return;}
  const t=document.createElement("table"),head=t.createTHead().insertRow();
- ["Fecha","Agricultor","Correo","Municipio","Cultivo","Área (ha)","Productos solicitados","Estado"].forEach(label=>{const th=document.createElement("th");th.textContent=label;head.append(th);});
+ ["Fecha","Agricultor","Correo","Municipio","Cultivo","Área (ha)","Productos y cantidades","Estado","Resultado y notificación"].forEach(label=>{const th=document.createElement("th");th.textContent=label;head.append(th);});
  const body=t.createTBody();
  shown.forEach(application=>{
   const row=body.insertRow();
-  [application.createdAt?.toDate?.().toLocaleString("es-CO")||"Reciente",application.name,application.email,application.town,application.crop,String(application.hectares),(application.products||[]).join(", ")].forEach(value=>td(row,value||""));
+  [application.createdAt?.toDate?.().toLocaleString("es-CO")||"Reciente",application.name,application.email,application.town,application.crop,String(application.hectares),((application.items||[]).map(item=>item.name+" · "+item.quantity+" "+item.unit).join(", ")||(application.products||[]).join(", "))].forEach(value=>td(row,value||""));
   const cell=row.insertCell(),select=document.createElement("select");select.className="request-status";select.dataset.applicationId=application.id;select.dataset.previous=application.status||"pendiente";select.setAttribute("aria-label","Estado de solicitud de "+application.name);
-  requestStatuses.forEach(([value,label])=>select.append(option(label,value)));select.value=application.status||"pendiente";cell.append(select);
+  if(application.status==="atendida"){select.append(option("Atendida","atendida"));select.value="atendida";select.disabled=true;}else{requestStatuses.forEach(([value,label])=>select.append(option(label,value)));select.value=application.status||"pendiente";}cell.append(select);
+   const resultCell=row.insertCell();
+   if(application.status==="atendida"&&application.decision){
+    const outcome=document.createElement("strong");outcome.textContent=application.decision==="aplica"?"Aplica":"No aplica";resultCell.append(outcome);
+    if(application.resolutionNote){const note=document.createElement("p");note.className="small";note.textContent=application.resolutionNote;resultCell.append(note);}
+    const emailState=document.createElement("p");emailState.className="small muted";emailState.textContent=application.emailNoticeStatus==="enviado"?"Correo enviado":"Correo pendiente de envío";resultCell.append(emailState);
+    const resend=document.createElement("button");resend.type="button";resend.className="button outline small-button";resend.dataset.emailApplication=application.id;resend.textContent=application.emailNoticeStatus==="enviado"?"Reenviar correo":"Enviar correo";resend.addEventListener("click",()=>sendStatusEmail(application.id,resend));resultCell.append(resend);
+   }else{
+    const form=document.createElement("form");form.className="resolve-request-form";
+    const decision=document.createElement("select");decision.name="decision";decision.required=true;decision.append(option("Selecciona resultado",""),option("Aplica","aplica"),option("No aplica","no_aplica"));
+    const note=document.createElement("textarea");note.name="resolutionNote";note.maxLength=500;note.rows=2;note.placeholder="Respuesta breve para el agricultor (opcional)";
+    const finish=document.createElement("button");finish.type="submit";finish.className="button forest small-button";finish.textContent="Atender y notificar";form.append(decision,note,finish);
+    form.addEventListener("submit",event=>{event.preventDefault();finalizeApplication(application.id,form,finish);});resultCell.append(form);
+   }
  });
  container.replaceChildren(t);
 }
@@ -203,6 +261,28 @@ function buildQuote(event){
  const tbody=tableEl.createTBody();items.forEach(item=>{const tr=tbody.insertRow();[item.name,String(item.quantity),money(item.unitPrice),money(item.quantity*item.unitPrice)].forEach(value=>td(tr,value));});doc.append(tableEl,quoteText("h2","Total estimado: "+money(total),"quote-grand-total"),quoteText("p","Cotización comercial sujeta a disponibilidad y confirmación de condiciones. Este documento no es factura electrónica.","quote-disclaimer"),quoteText("p","AgroCiclo del Sinú S.A.S. · Córdoba, Colombia","quote-footer"));
  doc.hidden=false;$("#print-quote").hidden=false;$("#quote-status").textContent="Cotización preparada. Puedes imprimirla o guardarla como PDF.";
 }
+async function sendStatusEmail(id,button){
+ if(!signedInUser)return;button.disabled=true;$("#team-status").textContent="Enviando respuesta por correo…";
+ try{
+  const token=await signedInUser.getIdToken();
+  const response=await fetch("/api/send-application-email",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({applicationId:id})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.message||"No se pudo enviar el correo.");
+  await updateDoc(doc(db,"applications",id),{emailNoticeStatus:"enviado",emailNoticeSentAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  await refresh();$("#team-status").textContent="Respuesta enviada al correo del agricultor.";
+ }catch(error){button.disabled=false;const current=applications.find(item=>item.id===id);if(current?.status==="atendida")await updateDoc(doc(db,"applications",id),{emailNoticeStatus:"pendiente",updatedAt:serverTimestamp()}).catch(()=>{});$("#team-status").textContent=error.message||errorText(error);}
+}
+async function finalizeApplication(id,form,button){
+ const data=formData(form),decision=data.decision,resolutionNote=String(data.resolutionNote||"").trim();
+ if(!["aplica","no_aplica"].includes(decision))return;
+ button.disabled=true;$("#team-status").textContent="Guardando respuesta y notificando…";
+ try{
+  await updateDoc(doc(db,"applications",id),{status:"atendida",decision,resolutionNote,decidedBy:signedInUser.email,decidedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  await refresh();
+  const emailButton=$("#application-table button[data-email-application='"+id+"']")||button;
+  await sendStatusEmail(id,emailButton);
+ }catch(error){button.disabled=false;$("#team-status").textContent=error.message||errorText(error);}
+}
 async function refresh(){
  producers=await readRows("producers");entries=await readRows("entries");applications=await readRows("applications");
  document.querySelectorAll(".producers").forEach(select=>{const value=select.value;select.replaceChildren(option("Selecciona un productor",""));producers.forEach(p=>select.append(option(p.name+" · "+p.town,p.id)));select.value=value;});
@@ -249,9 +329,9 @@ $("#open-team").addEventListener("click",async()=>{
  try{await refresh();$("#team-status").textContent="Datos actualizados.";}
  catch(error){$("#team-status").textContent=errorText(error);}
 });
-$("#open-farmer").addEventListener("click",()=>{stopTeamRealtime();currentView="farmer";setPage();});
-$("#back-to-roles").addEventListener("click",()=>{if(isTeamUser(signedInUser)){stopTeamRealtime();currentView="roles";setPage();}});
-$("#logout").addEventListener("click",()=>{stopTeamRealtime();signOut(auth);});
+$("#open-farmer").addEventListener("click",()=>{stopTeamRealtime();currentView="farmer";setPage();startFarmerRequests();});
+$("#back-to-roles").addEventListener("click",()=>{if(isTeamUser(signedInUser)){stopTeamRealtime();stopFarmerRequests();currentView="roles";setPage();}});
+$("#logout").addEventListener("click",()=>{stopTeamRealtime();stopFarmerRequests();signOut(auth);});
 $("#team-chat-form").addEventListener("submit",async(event)=>{
  event.preventDefault();const form=event.currentTarget,message=String(new FormData(form).get("message")||"").trim(),status=$("#chat-status");if(!message||!isTeamUser(signedInUser))return;
  const button=form.querySelector("button[type=submit]");button.disabled=true;status.textContent="Enviando…";
@@ -301,11 +381,11 @@ function stopTeamRealtime(){if(presenceHeartbeat)clearInterval(presenceHeartbeat
 if(configured){
  const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getFirestore(app);
  onAuthStateChanged(auth,user=>{
-  if(signedInUser&&signedInUser.uid!==user?.uid)stopTeamRealtime();
+  if(signedInUser&&signedInUser.uid!==user?.uid){stopTeamRealtime();stopFarmerRequests();}
   signedInUser=user;
   if(!user)currentView="login";
   else currentView=isTeamUser(user)?"roles":"farmer";
-  setPage();if(!user)renderFarmerProducts();
+  setPage();if(!user)renderFarmerProducts();else if(!isTeamUser(user))startFarmerRequests();
  });
 }else{
  setPage();

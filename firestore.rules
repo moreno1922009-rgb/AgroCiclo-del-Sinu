@@ -7,8 +7,8 @@ service cloud.firestore {
     function validTeamRole(role) { return (isManager() && role == 'gerente') || (!isManager() && role == 'colaborador'); }
     match /applications/{applicationId} {
       allow create: if verifiedUser()
-        && request.resource.data.keys().hasOnly(['uid','name','email','town','crop','hectares','products','status','consent','consentAt','createdAt'])
-        && request.resource.data.keys().hasAll(['uid','name','email','town','crop','hectares','products','status','consent','consentAt','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','name','email','town','crop','hectares','products','items','status','consent','consentAt','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','name','email','town','crop','hectares','products','items','status','consent','consentAt','createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
@@ -16,15 +16,38 @@ service cloud.firestore {
         && request.resource.data.crop is string && request.resource.data.crop.size() > 0 && request.resource.data.crop.size() <= 60
         && request.resource.data.hectares is number && request.resource.data.hectares > 0 && request.resource.data.hectares <= 100000
         && request.resource.data.products is list && request.resource.data.products.size() > 0 && request.resource.data.products.size() <= 12
+        && request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 12
         && request.resource.data.status == 'pendiente'
         && request.resource.data.consent == true
         && request.resource.data.consentAt == request.time
         && request.resource.data.createdAt == request.time;
-      allow read: if authorizedTeam();
+      allow read: if authorizedTeam() || (verifiedUser() && resource.data.uid == request.auth.uid);
       allow update: if authorizedTeam()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
-        && request.resource.data.status in ['pendiente','en_proceso','atendida']
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','decision','resolutionNote','decidedBy','decidedAt','emailNoticeStatus','emailNoticeSentAt'])
+        && request.resource.data.updatedAt == request.time
+        && (
+          (request.resource.data.status in ['pendiente','en_proceso']
+            && !resource.data.keys().hasAny(['decision'])
+            && !request.resource.data.keys().hasAny(['decision']))
+          ||
+          (request.resource.data.status == 'atendida'
+            && request.resource.data.decision in ['aplica','no_aplica']
+            && request.resource.data.resolutionNote is string
+            && request.resource.data.resolutionNote.size() <= 500
+            && (
+              ((resource.data.status != 'atendida' || !resource.data.keys().hasAny(['decision']))
+                && request.resource.data.decidedBy == request.auth.token.email
+                && request.resource.data.decidedAt == request.time)
+              ||
+              (resource.data.status == 'atendida'
+                && request.resource.data.decision == resource.data.decision
+                && request.resource.data.decidedBy == resource.data.decidedBy
+                && request.resource.data.decidedAt == resource.data.decidedAt
+                && request.resource.data.resolutionNote == resource.data.resolutionNote)
+            ))
+        )
+        && (!request.resource.data.keys().hasAny(['emailNoticeStatus']) || request.resource.data.emailNoticeStatus in ['enviado','pendiente'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['emailNoticeSentAt']) || request.resource.data.emailNoticeSentAt == request.time);
       allow delete: if false;
     }
     match /team_chat/{messageId} {
