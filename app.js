@@ -38,6 +38,7 @@ let requestFilter = "pendiente";
 let quoteSequence = 0;
 let gmailAccessToken = "";
 let gmailAccessTokenExpiresAt = 0;
+const emailErrors = new Map();
 let currentView = "login";
 const configured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("REEMPLAZAR");
 
@@ -194,6 +195,7 @@ function renderApplications(){
     const outcome=document.createElement("strong");outcome.textContent=application.decision==="aplica"?"Aplica":"No aplica";resultCell.append(outcome);
     if(application.resolutionNote){const note=document.createElement("p");note.className="small";note.textContent=application.resolutionNote;resultCell.append(note);}
     const emailState=document.createElement("p");emailState.className="small muted";emailState.textContent=application.emailNoticeStatus==="enviado"?"Correo enviado":"Correo pendiente de envío";resultCell.append(emailState);
+    if(emailErrors.has(application.id)){const errorNote=document.createElement("p");errorNote.className="small danger-text";errorNote.textContent=emailErrors.get(application.id);resultCell.append(errorNote);}
     const resend=document.createElement("button");resend.type="button";resend.className="button outline small-button";resend.dataset.emailApplication=application.id;resend.textContent=application.emailNoticeStatus==="enviado"?"Reenviar correo":"Enviar correo";resultCell.append(resend);
    }else{
     const form=document.createElement("form");form.className="resolve-request-form";
@@ -285,8 +287,9 @@ async function sendStatusEmail(id,button,accessToken){
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(result.message||"No se pudo enviar el correo.");
   await updateDoc(doc(db,"applications",id),{emailNoticeStatus:"enviado",emailNoticeSentAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  emailErrors.delete(id);
   await refresh();$("#team-status").textContent="Respuesta enviada al correo del agricultor.";
- }catch(error){button.disabled=false;const current=applications.find(item=>item.id===id);if(current?.status==="atendida")await updateDoc(doc(db,"applications",id),{emailNoticeStatus:"pendiente",updatedAt:serverTimestamp()}).catch(()=>{});$("#team-status").textContent=error.message||errorText(error);}
+ }catch(error){button.disabled=false;const message=error.message||errorText(error);emailErrors.set(id,message);const current=applications.find(item=>item.id===id);if(current?.status==="atendida")await updateDoc(doc(db,"applications",id),{emailNoticeStatus:"pendiente",updatedAt:serverTimestamp()}).catch(()=>{});renderApplications();$("#team-status").textContent=message;}
 }
 async function finalizeApplication(id,form,button){
  const data=formData(form),decision=data.decision,resolutionNote=String(data.resolutionNote||"").trim();

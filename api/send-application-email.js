@@ -62,7 +62,10 @@ module.exports = async function handler(request, response) {
     const googleIdentityResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
       headers: { Authorization: "Bearer " + googleAccessToken },
     });
-    if (!googleIdentityResponse.ok) return response.status(401).json({ message: "La autorización de Gmail venció. Vuelve a conectar tu correo." });
+    if (!googleIdentityResponse.ok) {
+      console.error("gmail_identity_check_failed", googleIdentityResponse.status);
+      return response.status(401).json({ message: "Google no confirmó la cuenta autorizada. Pulsa Autorizar mi correo y vuelve a intentar." });
+    }
     const googleIdentity = await googleIdentityResponse.json();
     if (String(googleIdentity.email || "").toLowerCase() !== email || googleIdentity.email_verified !== true) {
       return response.status(403).json({ message: "Autoriza el mismo correo institucional con el que abriste el panel." });
@@ -125,13 +128,20 @@ module.exports = async function handler(request, response) {
     });
     if (!mailResponse.ok) {
       const mailError = await mailResponse.json().catch(() => ({}));
-      const message = mailError.error?.status === "PERMISSION_DENIED" || mailResponse.status === 403
-        ? "Google rechazó el envío. Verifica que Gmail API esté habilitada y vuelve a autorizar tu correo."
-        : "Gmail no pudo enviar el aviso. Puedes reintentarlo desde la bandeja de solicitudes.";
-      return response.status(502).json({ message });
+      const reason = String(mailError.error?.status || mailError.error?.errors?.[0]?.reason || "unknown");
+      console.error("gmail_send_failed", JSON.stringify({ httpStatus: mailResponse.status, reason }));
+      const message = reason === "SERVICE_DISABLED"
+        ? "Gmail API está desactivada en Google Cloud para este proyecto."
+        : mailResponse.status === 401
+          ? "La autorización de Gmail venció. Pulsa Autorizar mi correo e inténtalo de nuevo."
+          : mailResponse.status === 403
+            ? "Google o la Universidad bloqueó el permiso de envío. Revisa la autorización de Gmail API con soporte institucional."
+            : "Gmail no pudo enviar el aviso (" + reason + "). Revisa el error y vuelve a intentar.";
+      return response.status(502).json({ message, reason });
     }
     return response.status(200).json({ sent: true, sender: email });
-  } catch {
+  } catch (error) {
+    console.error("application_email_handler_failed", error?.name || "UnknownError");
     return response.status(500).json({ message: "No se pudo procesar el envío. Intenta nuevamente." });
   }
 };
