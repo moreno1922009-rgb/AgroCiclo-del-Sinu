@@ -10,41 +10,23 @@ Aplicación web para productores y equipo de AgroCiclo. Los agricultores consult
 - Vercel para alojamiento web
 - Firebase Hosting como alternativa
 
-## Configuración de Firebase
+## Proyecto Firebase
 
-1. Crea un proyecto en Firebase Console.
-2. Registra una aplicación web en los ajustes del proyecto.
-3. En Authentication → Sign-in method, habilita Google.
-4. En Authentication → Settings → Authorized domains, agrega el dominio de Vercel y cualquier dominio propio que uses.
-5. En Firestore Database, crea la base de datos y publica las reglas de firestore.rules.
-6. Copia la configuración de tu app Firebase en firebase-config.js. Sustituye los valores REEMPLAZAR_...
+El proyecto Firebase ya está creado con ID `agrociclo-del-sinu`. La app web está registrada y su configuración pública se encuentra en `firebase-config.js`. Cloud Firestore está en la región `southamerica-east1` (São Paulo), con reglas de producción que permiten acceso solo a cuentas autenticadas, verificadas y del dominio `unicartagena.edu.co`. Estas cuentas pueden leer y crear registros; la edición y eliminación están bloqueadas.
 
-La configuración del cliente identifica el proyecto. El acceso a la base de datos se controla con firestore.rules. Las reglas solo aceptan usuarios autenticados, con correo verificado y dominio unicartagena.edu.co. Las cuentas de ese dominio pueden leer y crear registros. Las reglas bloquean su edición y eliminación.
+En Authentication → Método de acceso, habilita Google y elige el correo empresarial de soporte que se mostrará a los usuarios en la pantalla de inicio de sesión. Después de desplegar la app, agrega el dominio `vercel.app` asignado por Vercel a Authentication → Configuración → Dominios autorizados.
 
-## Subir a GitHub
+## GitHub y despliegue
 
-1. Crea un repositorio nuevo en GitHub.
-2. Sube el contenido completo de esta carpeta, incluyendo las reglas, las configuraciones y las imágenes.
-3. No subas claves privadas ni credenciales de cuentas de servicio. No publiques archivos .firebaserc con proyectos que no quieras compartir.
+Repositorio: [AgroCiclo-del-Sinu](https://github.com/moreno1922009-rgb/AgroCiclo-del-Sinu) (privado).
 
-## Publicar en Vercel
+Conecta la rama `main` con Vercel y usa la configuración para sitio estático: framework Other, sin comandos de instalación ni compilación, y sin directorio de salida. Los siguientes cambios en `main` se publicarán automáticamente.
 
-1. En Vercel, crea un proyecto e impórtalo desde el repositorio.
-2. Selecciona Other como framework. No hacen falta comandos de instalación ni compilación. Deja vacíos el comando de build y el directorio de salida.
-3. Publica el proyecto y agrega su dominio a los dominios autorizados de Firebase Authentication.
-4. Abre el sitio, entra en Acceso del equipo e inicia sesión con una cuenta @unicartagena.edu.co.
-
-## Publicar en Firebase Hosting
-
-Instala Firebase CLI, inicia sesión, crea .firebaserc a partir de .firebaserc.example, reemplaza el ID del proyecto y ejecuta:
-
-    firebase deploy --only hosting,firestore:rules
+No subas claves privadas ni credenciales de cuentas de servicio. La configuración web de Firebase es pública y el acceso a datos se protege en las reglas de Firestore.
 
 ## Datos
 
-Los registros del equipo se guardan en Firestore. Los datos de la consulta pública no se guardan. El formulario abre WhatsApp con la información ingresada para que el agricultor decida si envía el mensaje.
-
-Las imágenes son parte del proyecto. Instagram y WhatsApp se configuran en app.js.
+Los registros del equipo se guardan en Firestore. Los datos de la consulta pública no se guardan. El formulario abre WhatsApp con la información ingresada para que el agricultor decida si envía el mensaje. Las imágenes son parte del proyecto. Instagram y WhatsApp se configuran en `app.js`.
 
 ## Prueba local
 
@@ -52,4 +34,4 @@ Sirve la carpeta con un servidor estático, por ejemplo:
 
     python -m http.server 8000
 
-Abre http://localhost:8000. Configura Firebase y habilita localhost como dominio autorizado antes de iniciar sesión.
+Abre http://localhost:8000. Agrega `localhost` a los dominios autorizados de Firebase Authentication antes de iniciar sesión.
