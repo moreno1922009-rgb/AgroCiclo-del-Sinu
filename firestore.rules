@@ -1,42 +1,59 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function verifiedUser() {
-      return request.auth != null && request.auth.token.email_verified == true;
-    }
-    function authorizedTeam() {
-      return verifiedUser()
-        && request.auth.token.email.matches('(?i)^.+@unicartagena[.]edu[.]co$');
-    }
+    function verifiedUser() { return request.auth != null && request.auth.token.email_verified == true; }
+    function authorizedTeam() { return verifiedUser() && request.auth.token.email.matches('(?i)^.+@unicartagena[.]edu[.]co$'); }
+    function isManager() { return authorizedTeam() && request.auth.token.email.matches('(?i)^dmorenom3@unicartagena[.]edu[.]co$'); }
+    function validTeamRole(role) { return (isManager() && role == 'gerente') || (!isManager() && role == 'colaborador'); }
     match /applications/{applicationId} {
       allow create: if verifiedUser()
-        && request.resource.data.keys().hasOnly(['uid','name','email','town','crop','hectares','supplies','status','consent','consentAt','createdAt'])
-        && request.resource.data.keys().hasAll(['uid','name','email','town','crop','hectares','supplies','status','consent','consentAt','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','name','email','town','crop','hectares','products','status','consent','consentAt','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','name','email','town','crop','hectares','products','status','consent','consentAt','createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
         && request.resource.data.town is string && request.resource.data.town.size() > 0 && request.resource.data.town.size() <= 80
         && request.resource.data.crop is string && request.resource.data.crop.size() > 0 && request.resource.data.crop.size() <= 60
         && request.resource.data.hectares is number && request.resource.data.hectares > 0 && request.resource.data.hectares <= 100000
-        && request.resource.data.supplies is string && request.resource.data.supplies.size() > 0 && request.resource.data.supplies.size() <= 140
-        && request.resource.data.status == 'recibida'
+        && request.resource.data.products is list && request.resource.data.products.size() > 0 && request.resource.data.products.size() <= 12
+        && request.resource.data.status == 'pendiente'
         && request.resource.data.consent == true
         && request.resource.data.consentAt == request.time
         && request.resource.data.createdAt == request.time;
       allow read: if authorizedTeam();
       allow update: if authorizedTeam()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
-        && request.resource.data.status in ['recibida','en_revision','aprobada','no_aplica','cerrada']
+        && request.resource.data.status in ['pendiente','en_proceso','atendida']
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
     }
-    match /producers/{document} {
-      allow read, create: if authorizedTeam();
+    match /team_chat/{messageId} {
+      allow read: if authorizedTeam();
+      allow create: if authorizedTeam()
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','message','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','name','email','role','message','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+        && validTeamRole(request.resource.data.role)
+        && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 1800
+        && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
     }
-    match /entries/{document} {
-      allow read, create: if authorizedTeam();
-      allow update, delete: if false;
+    match /team_presence/{uid} {
+      allow read: if authorizedTeam();
+      allow create, update: if authorizedTeam() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','online','lastSeen'])
+        && request.resource.data.keys().hasAll(['uid','name','email','role','online','lastSeen'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+        && validTeamRole(request.resource.data.role)
+        && request.resource.data.online is bool
+        && request.resource.data.lastSeen == request.time;
+      allow delete: if false;
     }
+    match /producers/{document} { allow read, create: if authorizedTeam(); allow update, delete: if false; }
+    match /entries/{document} { allow read, create: if authorizedTeam(); allow update, delete: if false; }
   }
 }

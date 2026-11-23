@@ -48,6 +48,11 @@
    <article><span class="step-mark" aria-hidden="true">02</span><div><h2>Solicita insumos</h2><p>AgroCiclo revisa tu caso.</p></div></article>
    <article><span class="step-mark" aria-hidden="true">03</span><div><h2>Liquida tu cosecha</h2><p>Recibe el saldo después del descuento.</p></div></article>
   </div>
+  <section class="about-story">
+   <div><p class="eyebrow section-kicker">QUIÉNES SOMOS</p><h2>Un ciclo más cercano para el campo cordobés.</h2><p>En AgroCiclo del Sinú conectamos el acceso a agroinsumos con la cosecha. Queremos que cada productor pueda consultar sus opciones con claridad y recibir acompañamiento durante el proceso.</p></div>
+   <aside class="story-note"><span aria-hidden="true">🌱</span><h3>De la siembra a la cosecha</h3><p>La idea es sencilla: organizar los insumos que necesita tu cultivo y revisar contigo cómo se liquida el saldo cuando se comercializa la cosecha.</p></aside>
+  </section>
+  <section class="crop-showcase"><div class="section-heading"><p class="eyebrow section-kicker">NUESTRO TERRITORIO</p><h2>Cultivos que hacen parte de Córdoba</h2><p class="muted">Maíz, arroz, plátano, yuca y ñame, entre otros. Selecciona tu cultivo para ver opciones de insumos habituales.</p></div><div class="crop-chips"><span>🌽 Maíz</span><span>🌾 Arroz</span><span>🍌 Plátano</span><span>🥔 Yuca</span><span>🌿 Ñame</span></div></section>
   <div class="split" id="consulta">
     <section class="card">
      <p class="eyebrow section-kicker">FINANCIACIÓN DE AGROINSUMOS</p>
@@ -55,9 +60,10 @@
      <p class="muted">Completa los datos de tu cultivo para recibir una orientación inicial.</p>
      <form id="eligibility" class="fields">
        <label>Municipio<select name="town" class="towns" required></select></label>
-       <label>Cultivo<input name="crop" required maxlength="60" placeholder="Ej. maíz"></label>
+       <label>Cultivo<select name="crop" class="crop-select" required></select></label>
+       <label class="crop-other-field" hidden>¿Cuál cultivo?<input name="cropOther" maxlength="60" placeholder="Escribe el nombre del cultivo"></label>
        <label>Área sembrada (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required placeholder="Ej. 2"></label>
-       <label>Agroinsumos que necesitas<input name="supplies" required maxlength="140" placeholder="Ej. semillas y fertilizante"></label>
+       <fieldset class="product-fieldset wide"><legend>Productos e insumos que necesitas</legend><div id="farmer-products" class="product-options"></div><p class="small muted">Elige uno o varios. Las opciones son una guía; la disponibilidad se confirma con el equipo.</p></fieldset>
        <label class="consent-row wide"><input id="farmer-consent" name="consent" type="checkbox" required><span>Autorizo a AgroCiclo a registrar estos datos y usarlos para responder esta solicitud.</span></label>
        <p class="small muted data-note">Usaremos tu nombre y correo de Google junto con la información del cultivo. Solo el equipo autorizado podrá consultar la solicitud.</p>
        <button class="button forest wide" type="submit">Registrar solicitud</button>
@@ -85,15 +91,23 @@
  <div class="team-toolbar"><p id="team-user" class="muted small"></p><button id="back-to-roles" class="button outline" type="button">Cambiar espacio</button></div>
  <div id="team-dashboard" hidden>
  <div class="totals" id="totals"></div>
+ <section class="card team-chat">
+  <div class="chat-header"><div><p class="eyebrow section-kicker">ESPACIO INTERNO</p><h2>Chat del equipo</h2><p class="muted">Coordina solicitudes, clientes y tareas en un solo lugar.</p></div><div id="team-presence" class="team-presence" aria-live="polite"></div></div>
+  <p class="small chat-privacy">Visible solo para cuentas verificadas del equipo. Evita compartir contraseñas o datos financieros que no sean necesarios.</p>
+  <div id="team-chat-feed" class="chat-feed" role="log" aria-live="polite"><p class="muted small">Los mensajes nuevos aparecerán aquí.</p></div>
+  <form id="team-chat-form" class="chat-form"><label>Mensaje para el equipo<textarea name="message" rows="3" maxlength="1800" required placeholder="Escribe una actualización o comparte información útil…"></textarea></label><button class="button forest" type="submit">Enviar mensaje</button></form>
+  <p id="chat-status" class="small muted" role="status"></p>
+ </section>
  <div class="team-grid">
   <section class="card"><h2>Registrar productor</h2><form id="add-producer" class="fields">
    <label>Nombre o alias<input name="name" maxlength="80" required></label><label>Municipio<select name="town" class="towns" required></select></label>
-   <label>Cultivo<input name="crop" maxlength="60" required></label><label>Área (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required></label>
+   <label>Cultivo<select name="crop" class="crop-select" required></select></label><label class="crop-other-field" hidden>¿Cuál cultivo?<input name="cropOther" maxlength="60"></label><label>Área (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required></label>
    <button class="button forest wide" type="submit">Guardar productor</button>
   </form></section>
   <section class="card"><h2>Registrar financiación</h2><form id="add-advance" class="fields">
    <label class="wide">Productor<select name="producer" class="producers" required></select></label>
-   <label class="wide">Insumo o concepto<input name="description" maxlength="100" required></label>
+   <label class="wide">Producto o insumo<select id="team-product-select" name="product" required></select></label>
+   <label id="custom-product-wrap" class="wide" hidden>Describe el producto<input name="customProduct" maxlength="100"></label>
    <label class="wide">Monto financiado (COP)<input name="amount" type="number" min="1" max="999999999999" step="1" required></label>
    <button class="button forest wide" type="submit">Guardar financiación</button>
   </form></section>
@@ -106,7 +120,7 @@
   </form></section>
  </div>
  <p id="team-status" class="status" role="status"></p>
- <section class="card team-history"><h2>Solicitudes de agricultores</h2><p class="muted small">Revisa cada caso y actualiza su estado para organizar el seguimiento.</p><div id="application-table" class="table-wrap"></div></section>
+ <section class="card team-history"><h2>Solicitudes de agricultores</h2><p class="muted small">Revisa cada caso y actualiza su estado: pendiente, en proceso o atendida.</p><div id="application-table" class="table-wrap"></div></section>
  <section class="card team-history"><h2>Productores y saldos pendientes</h2><div id="producer-table" class="table-wrap"></div></section>
  <section class="card team-history"><h2>Historial de movimientos</h2><div id="history-table" class="table-wrap"></div></section>
  </div>

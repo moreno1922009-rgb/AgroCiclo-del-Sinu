@@ -9,6 +9,9 @@ Aplicación web adaptable a teléfonos, tabletas y computadores para productores
 - El equipo puede revisar solicitudes y cambiar su estado desde el panel.
 - Simulador de liquidación: estima el descuento por insumos y el saldo de una cosecha.
 - Panel institucional para registrar productores, financiación y liquidaciones.
+- Bandeja de solicitudes con estados pendiente, en proceso y atendida.
+- Chat privado del equipo con presencia en tiempo real; `dmorenom3@unicartagena.edu.co` aparece como gerente y los demás miembros como colaboradores.
+- Catálogo de productos e insumos seleccionables organizado según el cultivo.
 - Autenticación de Google con Firebase y registros internos en Cloud Firestore.
 - Contactos directos a Instagram y WhatsApp.
 
@@ -31,6 +34,8 @@ python -m http.server 8000
 
 Abre <http://localhost:8000>. Para iniciar sesión en local, agrega `localhost` a los dominios autorizados en Firebase Authentication.
 
-## Solicitudes y WhatsApp
+## Solicitudes, chat y WhatsApp
 
-El formulario registra la solicitud en Firestore después de que el agricultor acepta el aviso de uso de datos. El equipo institucional puede leerla y actualizar su estado; los agricultores autenticados no pueden leer las solicitudes de otras personas. El enlace de WhatsApp se prepara con el código y los datos de la solicitud, pero el agricultor debe abrir WhatsApp y pulsar enviar. El envío automático de mensajes requiere una cuenta de WhatsApp Business Platform, un número habilitado, plantillas aprobadas y credenciales guardadas como secretos de servidor; nunca deben incluirse en el código del navegador.
+El formulario registra la solicitud en Firestore después de que el agricultor acepta el aviso de uso de datos. El equipo institucional puede leerla y cambiar su estado; los agricultores no pueden consultar solicitudes ajenas. Los productos sugeridos son opciones generales, no recomendaciones técnicas de dosis o aplicación.
+
+El chat y la presencia se comparten en tiempo real únicamente entre cuentas verificadas `@unicartagena.edu.co`. El acceso al equipo sigue habilitado para todo el dominio por ahora. El botón de WhatsApp prepara un mensaje y el agricultor confirma el envío desde WhatsApp.
