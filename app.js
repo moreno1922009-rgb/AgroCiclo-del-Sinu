@@ -265,11 +265,13 @@ function buildQuote(event){
  const tbody=tableEl.createTBody();items.forEach(item=>{const tr=tbody.insertRow();[item.name,String(item.quantity),money(item.unitPrice),money(item.quantity*item.unitPrice)].forEach(value=>td(tr,value));});doc.append(tableEl,quoteText("h2","Total estimado: "+money(total),"quote-grand-total"),quoteText("p","Cotización comercial sujeta a disponibilidad y confirmación de condiciones. Este documento no es factura electrónica.","quote-disclaimer"),quoteText("p","AgroCiclo del Sinú S.A.S. · Córdoba, Colombia","quote-footer"));
  doc.hidden=false;$("#print-quote").hidden=false;$("#quote-status").textContent="Cotización preparada. Puedes imprimirla o guardarla como PDF.";
 }
-function requestGmailAccessToken(){
- if(gmailAccessToken&&Date.now()<gmailAccessTokenExpiresAt-60000)return Promise.resolve(gmailAccessToken);
+function requestGmailAccessToken(forceAuthorization=false){
+ if(!forceAuthorization&&gmailAccessToken&&Date.now()<gmailAccessTokenExpiresAt-60000)return Promise.resolve(gmailAccessToken);
+ if(forceAuthorization){gmailAccessToken="";gmailAccessTokenExpiresAt=0;}
  const provider=new GoogleAuthProvider();
  provider.addScope("https://www.googleapis.com/auth/gmail.send");
  provider.addScope("email");
+ if(forceAuthorization)provider.setCustomParameters({prompt:"consent"});
  return reauthenticateWithPopup(signedInUser,provider).then(result=>{
   if(result.user.email?.toLowerCase()!==signedInUser.email?.toLowerCase())throw new Error("Autoriza el mismo correo institucional con el que abriste el panel.");
   const credential=GoogleAuthProvider.credentialFromResult(result),token=credential?.accessToken;
@@ -336,7 +338,7 @@ $("#application-table").addEventListener("change",async(event)=>{
 });
 $("#authorize-email").addEventListener("click",async(event)=>{
  const button=event.currentTarget;button.disabled=true;$("#email-auth-status").textContent="Solicitando autorización a Google…";
- try{await requestGmailAccessToken();$("#email-auth-status").textContent="Correo autorizado para esta sesión: "+signedInUser.email;}
+ try{await requestGmailAccessToken(true);$("#email-auth-status").textContent="Permiso de envío renovado para esta sesión: "+signedInUser.email;}
  catch(error){$("#email-auth-status").textContent=error.message||"No se pudo autorizar el correo.";}
  finally{button.disabled=false;}
 });

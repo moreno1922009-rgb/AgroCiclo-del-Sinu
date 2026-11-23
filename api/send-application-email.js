@@ -129,9 +129,12 @@ module.exports = async function handler(request, response) {
     if (!mailResponse.ok) {
       const mailError = await mailResponse.json().catch(() => ({}));
       const reason = String(mailError.error?.status || mailError.error?.errors?.[0]?.reason || "unknown");
-      console.error("gmail_send_failed", JSON.stringify({ httpStatus: mailResponse.status, reason }));
+      const providerMessage = String(mailError.error?.message || "").slice(0, 240);
+      console.error("gmail_send_failed", JSON.stringify({ httpStatus: mailResponse.status, reason, providerMessage }));
       const message = reason === "SERVICE_DISABLED"
         ? "Gmail API está desactivada en Google Cloud para este proyecto."
+        : /insufficient permission|insufficient authentication scopes/i.test(providerMessage)
+          ? "Google no concedió el permiso gmail.send. Pulsa Autorizar / renovar permiso y acepta el envío de correos."
         : mailResponse.status === 401
           ? "La autorización de Gmail venció. Pulsa Autorizar mi correo e inténtalo de nuevo."
           : mailResponse.status === 403
