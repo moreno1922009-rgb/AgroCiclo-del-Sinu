@@ -58,7 +58,9 @@
        <label>Cultivo<input name="crop" required maxlength="60" placeholder="Ej. maíz"></label>
        <label>Área sembrada (ha)<input name="hectares" type="number" min="0.01" max="100000" step="0.01" required placeholder="Ej. 2"></label>
        <label>Agroinsumos que necesitas<input name="supplies" required maxlength="140" placeholder="Ej. semillas y fertilizante"></label>
-       <button class="button forest wide" type="submit">Consultar disponibilidad</button>
+       <label class="consent-row wide"><input id="farmer-consent" name="consent" type="checkbox" required><span>Autorizo a AgroCiclo a registrar estos datos y usarlos para responder esta solicitud.</span></label>
+       <p class="small muted data-note">Usaremos tu nombre y correo de Google junto con la información del cultivo. Solo el equipo autorizado podrá consultar la solicitud.</p>
+       <button class="button forest wide" type="submit">Registrar solicitud</button>
      </form>
      <div id="eligibility-result" class="result" role="status" hidden></div>
      <a id="request-link" class="button outline" target="_blank" rel="noopener noreferrer" hidden>Enviar solicitud por WhatsApp</a>
@@ -104,6 +106,7 @@
   </form></section>
  </div>
  <p id="team-status" class="status" role="status"></p>
+ <section class="card team-history"><h2>Solicitudes de agricultores</h2><p class="muted small">Revisa cada caso y actualiza su estado para organizar el seguimiento.</p><div id="application-table" class="table-wrap"></div></section>
  <section class="card team-history"><h2>Productores y saldos pendientes</h2><div id="producer-table" class="table-wrap"></div></section>
  <section class="card team-history"><h2>Historial de movimientos</h2><div id="history-table" class="table-wrap"></div></section>
  </div>

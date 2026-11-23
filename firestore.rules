@@ -1,10 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function verifiedUser() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
     function authorizedTeam() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
+      return verifiedUser()
         && request.auth.token.email.matches('(?i)^.+@unicartagena[.]edu[.]co$');
+    }
+    match /applications/{applicationId} {
+      allow create: if verifiedUser()
+        && request.resource.data.keys().hasOnly(['uid','name','email','town','crop','hectares','supplies','status','consent','consentAt','createdAt'])
+        && request.resource.data.keys().hasAll(['uid','name','email','town','crop','hectares','supplies','status','consent','consentAt','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+        && request.resource.data.town is string && request.resource.data.town.size() > 0 && request.resource.data.town.size() <= 80
+        && request.resource.data.crop is string && request.resource.data.crop.size() > 0 && request.resource.data.crop.size() <= 60
+        && request.resource.data.hectares is number && request.resource.data.hectares > 0 && request.resource.data.hectares <= 100000
+        && request.resource.data.supplies is string && request.resource.data.supplies.size() > 0 && request.resource.data.supplies.size() <= 140
+        && request.resource.data.status == 'recibida'
+        && request.resource.data.consent == true
+        && request.resource.data.consentAt == request.time
+        && request.resource.data.createdAt == request.time;
+      allow read: if authorizedTeam();
+      allow update: if authorizedTeam()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+        && request.resource.data.status in ['recibida','en_revision','aprobada','no_aplica','cerrada']
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
     match /producers/{document} {
       allow read, create: if authorizedTeam();

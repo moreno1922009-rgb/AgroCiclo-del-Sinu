@@ -48,3 +48,12 @@ body{background:radial-gradient(ellipse at 6% 2%,#e9f1df 0,transparent 36%),var(
 @media(max-width:900px){.auth-layout{grid-template-columns:1fr;max-width:720px;margin:auto;gap:20px}.auth-visual{min-height:430px}.auth-copy{padding:40px}.auth-points{grid-template-columns:repeat(3,1fr);gap:8px;margin-top:28px}.auth-points span{font-size:.84rem;align-items:flex-start}.auth-points b{width:27px;height:27px;flex:none}.sign-in-card{margin-bottom:12px}}
 @media(max-width:600px){.wrap{width:calc(100% - 28px)}.top-inner{min-height:72px}.brand{font-size:1rem}.brand-icon{width:36px;height:36px}.session-bar{gap:7px}.session-bar span{display:none}.session-bar .button{min-height:40px;padding:7px 10px;font-size:.82rem}.auth-layout{min-height:0;padding:18px 0 28px;gap:14px}.auth-visual{min-height:390px;border-radius:22px;background-position:56% center}.auth-copy{padding:30px 24px}.auth-copy h1{font-size:clamp(2.45rem,11vw,3.5rem);margin:17px 0 13px}.auth-copy>p:not(.eyebrow){font-size:.96rem}.auth-points{grid-template-columns:1fr;gap:7px;margin-top:21px}.auth-points span{align-items:center;font-size:.86rem}.auth-points b{width:24px;height:24px}.sign-in-card{padding:25px 21px;border-radius:19px}.sign-in-icon{width:42px;height:42px;margin-bottom:16px}.role-screen{padding:30px 0 50px}.role-cards{grid-template-columns:1fr;gap:12px}.role-card{min-height:220px;padding:22px}.app-welcome{align-items:flex-start;flex-direction:column;padding-top:21px}.app-welcome>.button{margin-bottom:8px}.team-toolbar{align-items:flex-start;flex-direction:column}.team-grid .team-toolbar{grid-column:auto}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+
+/* Solicitudes de agricultores y consentimiento de datos */
+.consent-row{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:10px!important;font-weight:550!important;line-height:1.4}
+.consent-row input{width:18px;min-height:18px;flex:none;margin:2px 0 0;padding:0;accent-color:var(--forest)}
+.data-note{grid-column:1/-1;margin:-6px 0 0;font-size:.86rem}
+.request-status{min-height:40px;max-width:180px;padding:6px 9px;border:1px solid #acbfb0;border-radius:8px;background:white;color:var(--ink);font:inherit}
+@media(max-width:900px){.totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.totals{grid-template-columns:1fr}}

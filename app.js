@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { firebaseConfig } from "./firebase-config.js";
 
 const contacts = { instagram: "https://www.instagram.com/agroc_iclo/", whatsapp: "573243175381" };
@@ -13,6 +13,7 @@ let db;
 let signedInUser = null;
 let producers = [];
 let entries = [];
+let applications = [];
 let currentView = "login";
 const configured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("REEMPLAZAR");
 
@@ -59,10 +60,16 @@ function social(label, channel, href) {
 $("#social-links").append(social("Instagram","instagram",contacts.instagram),social("WhatsApp","whatsapp",whatsappLink("Hola, AgroCiclo. Quisiera conocer sus servicios.")));
 
 function showResult(selector, message) { const node=$(selector);node.textContent=message;node.hidden=false; }
-$("#eligibility").addEventListener("submit",(event)=>{
- event.preventDefault();const data=Object.fromEntries(new FormData(event.currentTarget));const covered=towns.includes(data.town);
- showResult("#eligibility-result",covered?"Tu municipio está en la zona inicial de atención. Escríbenos para revisar tu solicitud.":"Consulta por WhatsApp si podemos atender tu municipio.");
- const link=$("#request-link");link.href=whatsappLink("Hola, AgroCiclo. Quiero consultar financiación de agroinsumos.\nMunicipio: "+data.town+"\nCultivo: "+data.crop+"\nÁrea (ha): "+data.hectares+"\nInsumos: "+data.supplies);link.hidden=false;
+$("#eligibility").addEventListener("submit",async(event)=>{
+ event.preventDefault();const form=event.currentTarget,data=Object.fromEntries(new FormData(form));
+ if(!signedInUser||!db){showResult("#eligibility-result","Inicia sesión para registrar tu solicitud.");return;}
+ const button=form.querySelector('button[type="submit"]'),link=$("#request-link");button.disabled=true;button.textContent="Registrando solicitud…";link.hidden=true;
+ try{
+  const request=await addDoc(collections("applications"),{uid:signedInUser.uid,name:(signedInUser.displayName||signedInUser.email||"Agricultor").slice(0,80),email:signedInUser.email,town:data.town,crop:data.crop.trim(),hectares:Number(data.hectares),supplies:data.supplies.trim(),status:"recibida",consent:true,consentAt:serverTimestamp(),createdAt:serverTimestamp()});
+  const covered=towns.includes(data.town);showResult("#eligibility-result",(covered?"Tu municipio está en la zona inicial de atención. ":"Consulta por WhatsApp si podemos atender tu municipio. ")+"Solicitud registrada con código "+request.id+". El equipo podrá hacer seguimiento.");
+  link.href=whatsappLink("Hola, AgroCiclo. Quiero consultar financiación de agroinsumos.\\nCódigo de solicitud: "+request.id+"\\nNombre: "+(signedInUser.displayName||"Agricultor")+"\\nMunicipio: "+data.town+"\\nCultivo: "+data.crop+"\\nÁrea (ha): "+data.hectares+"\\nInsumos: "+data.supplies);link.textContent="Abrir WhatsApp para enviar la solicitud";link.hidden=false;form.reset();
+ }catch(error){showResult("#eligibility-result",errorText(error));}
+ finally{button.disabled=false;button.textContent="Registrar solicitud";}
 });
 $("#simulation").addEventListener("submit",(event)=>{event.preventDefault();const d=Object.fromEntries(new FormData(event.currentTarget));const gross=Number(d.gross),balance=Number(d.balance),deduction=Math.min(gross,balance);showResult("#simulation-result","Saldo estimado para el productor: "+money(gross-deduction)+"\nDescuento por insumos: "+money(deduction));});
 
@@ -83,14 +90,31 @@ function readRows(name){return getDocs(query(collections(name),orderBy("createdA
 function balanceFor(id){return entries.reduce((sum,row)=>sum+(row.producerId===id?(row.type==="advance"?row.amount:-row.deduction):0),0);}
 function td(row,value){const cell=row.insertCell();cell.textContent=value;}
 function table(container,heads,rows,empty){if(!rows.length){container.textContent=empty;return;}const t=document.createElement("table"),h=t.createTHead().insertRow();heads.forEach(x=>{const th=document.createElement("th");th.textContent=x;h.append(th);});const b=t.createTBody();rows.forEach(values=>{const tr=b.insertRow();values.forEach(v=>td(tr,v));});container.replaceChildren(t);}
+const requestStatuses=[["recibida","Recibida"],["en_revision","En revisión"],["aprobada","Aprobada"],["no_aplica","No aplica"],["cerrada","Cerrada"]];
+function renderApplications(){
+ const container=$("#application-table");
+ if(!applications.length){container.textContent="Aún no hay solicitudes registradas.";return;}
+ const t=document.createElement("table"),head=t.createTHead().insertRow();
+ ["Fecha","Agricultor","Correo","Municipio","Cultivo","Área (ha)","Insumos","Estado"].forEach(label=>{const th=document.createElement("th");th.textContent=label;head.append(th);});
+ const body=t.createTBody();
+ applications.forEach(application=>{
+  const row=body.insertRow();
+  [application.createdAt?.toDate?.().toLocaleString("es-CO")||"Reciente",application.name,application.email,application.town,application.crop,String(application.hectares),application.supplies].forEach(value=>td(row,value||""));
+  const cell=row.insertCell(),select=document.createElement("select");select.className="request-status";select.dataset.applicationId=application.id;select.dataset.previous=application.status||"recibida";select.setAttribute("aria-label","Estado de solicitud de "+application.name);
+  requestStatuses.forEach(([value,label])=>select.append(option(label,value)));select.value=application.status||"recibida";cell.append(select);
+ });
+ container.replaceChildren(t);
+}
 async function refresh(){
- producers=await readRows("producers");entries=await readRows("entries");
+ producers=await readRows("producers");entries=await readRows("entries");applications=await readRows("applications");
  document.querySelectorAll(".producers").forEach(select=>{const value=select.value;select.replaceChildren(option("Selecciona un productor",""));producers.forEach(p=>select.append(option(p.name+" · "+p.town,p.id)));select.value=value;});
  const total=producers.reduce((sum,p)=>sum+balanceFor(p.id),0);
- const cards=[["Productores",producers.length],["Saldo de insumos",money(total)],["Liquidaciones",entries.filter(e=>e.type==="harvest").length]];
+ const activeRequests=applications.filter(a=>["recibida","en_revision"].includes(a.status)).length;
+ const cards=[["Productores",producers.length],["Solicitudes activas",activeRequests],["Saldo de insumos",money(total)],["Liquidaciones",entries.filter(e=>e.type==="harvest").length]];
  $("#totals").replaceChildren(...cards.map(([label,value])=>{const d=document.createElement("div");d.className="total";const strong=document.createElement("strong");strong.textContent=value;d.append(strong,label);return d;}));
  table($("#producer-table"),["Productor","Municipio","Cultivo","Área (ha)","Saldo pendiente"],producers.map(p=>[p.name,p.town,p.crop,p.hectares,money(balanceFor(p.id))]),"Aún no hay productores.");
  table($("#history-table"),["Fecha","Productor","Movimiento","Detalle","Valor"],entries.map(e=>[e.createdAt?.toDate?.().toLocaleDateString("es-CO")||"Hoy",producers.find(p=>p.id===e.producerId)?.name||"",e.type==="advance"?"Financiación":"Liquidación",e.description||money(e.deduction)+" descuento",money(e.amount??e.payout)]),"Aún no hay movimientos.");
+ renderApplications();
 }
 function formData(form){return Object.fromEntries(new FormData(form));}
 async function operation(form,callback){const status=$("#team-status");try{await callback(formData(form));form.reset();await refresh();status.textContent="Registro guardado.";}catch(error){status.textContent=errorText(error);}}
@@ -103,6 +127,10 @@ $("#google-signin").addEventListener("click",async()=>{
  try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:"select_account"});await signInWithPopup(auth,provider);}
  catch(error){$("#auth-status").textContent=errorText(error);}
  finally{button.disabled=false;}
+});
+$("#application-table").addEventListener("change",async(event)=>{
+ const select=event.target.closest(".request-status");if(!select)return;const id=select.dataset.applicationId,status=select.value,previous=select.dataset.previous;select.disabled=true;
+ try{await updateDoc(doc(db,"applications",id),{status,updatedAt:serverTimestamp()});await refresh();$("#team-status").textContent="Estado de solicitud actualizado.";}catch(error){select.value=previous;select.disabled=false;$("#team-status").textContent=errorText(error);}
 });
 $("#open-team").addEventListener("click",async()=>{
  if(!isTeamUser(signedInUser))return;

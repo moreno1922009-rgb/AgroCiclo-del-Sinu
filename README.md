@@ -4,7 +4,9 @@ Aplicación web adaptable a teléfonos, tabletas y computadores para productores
 
 ## Funciones
 
-- Consulta inicial de atención por municipio, cultivo, área e insumos. El agricultor revisa el mensaje y decide si lo envía por WhatsApp.
+- Solicitudes de agricultores guardadas en Firestore con consentimiento, fecha, datos del cultivo y estado de seguimiento.
+- Enlace de WhatsApp con el mensaje preparado y el código de la solicitud; el agricultor confirma el envío desde WhatsApp.
+- El equipo puede revisar solicitudes y cambiar su estado desde el panel.
 - Simulador de liquidación: estima el descuento por insumos y el saldo de una cosecha.
 - Panel institucional para registrar productores, financiación y liquidaciones.
 - Autenticación de Google con Firebase y registros internos en Cloud Firestore.
@@ -29,6 +31,6 @@ python -m http.server 8000
 
 Abre <http://localhost:8000>. Para iniciar sesión en local, agrega `localhost` a los dominios autorizados en Firebase Authentication.
 
-## Datos del agricultor
+## Solicitudes y WhatsApp
 
-El formulario de consulta se prepara en el navegador y crea un enlace de WhatsApp con los datos ingresados. No guarda esa solicitud en Firestore. El envío solo ocurre si el agricultor pulsa el enlace y confirma el mensaje en WhatsApp.
+El formulario registra la solicitud en Firestore después de que el agricultor acepta el aviso de uso de datos. El equipo institucional puede leerla y actualizar su estado; los agricultores autenticados no pueden leer las solicitudes de otras personas. El enlace de WhatsApp se prepara con el código y los datos de la solicitud, pero el agricultor debe abrir WhatsApp y pulsar enviar. El envío automático de mensajes requiere una cuenta de WhatsApp Business Platform, un número habilitado, plantillas aprobadas y credenciales guardadas como secretos de servidor; nunca deben incluirse en el código del navegador.
