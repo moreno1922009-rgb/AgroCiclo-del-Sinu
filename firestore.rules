@@ -38,7 +38,15 @@ service cloud.firestore {
         && validTeamRole(request.resource.data.role)
         && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 1800
         && request.resource.data.createdAt == request.time;
-      allow update, delete: if false;
+      allow update: if authorizedTeam()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','message','createdAt','editedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message','editedAt'])
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 1800
+        && request.resource.data.editedAt == request.time;
+      allow delete: if authorizedTeam() && (resource.data.uid == request.auth.uid || isManager());
     }
     match /team_presence/{uid} {
       allow read: if authorizedTeam();
@@ -53,7 +61,7 @@ service cloud.firestore {
         && request.resource.data.lastSeen == request.time;
       allow delete: if false;
     }
-    match /producers/{document} { allow read, create: if authorizedTeam(); allow update, delete: if false; }
+    match /producers/{document} { allow read, create: if authorizedTeam(); allow update: if false; allow delete: if isManager(); }
     match /entries/{document} { allow read, create: if authorizedTeam(); allow update, delete: if false; }
   }
 }
