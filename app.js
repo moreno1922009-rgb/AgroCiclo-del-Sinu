@@ -13,6 +13,7 @@ let db;
 let signedInUser = null;
 let producers = [];
 let entries = [];
+let currentView = "login";
 const configured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("REEMPLAZAR");
 
 function option(label, value = label) { return new Option(label, value); }
@@ -23,20 +24,27 @@ document.querySelectorAll(".towns").forEach((select) => {
 });
 
 function setPage() {
-  const teamPage = location.hash === "#equipo";
   const authenticated = Boolean(signedInUser);
-  $("#farmer").hidden = teamPage;
-  $("#team").hidden = !teamPage || !authenticated;
-  $("#team-login").hidden = !teamPage || authenticated;
-  document.querySelectorAll("[data-tab]").forEach((link) => {
-    const active = link.dataset.tab === (teamPage ? "equipo" : "inicio");
-    if (active) link.setAttribute("aria-current", "page");
-    else link.removeAttribute("aria-current");
-  });
-  if (teamPage && !configured) $("#login-status").textContent = "Configura Firebase siguiendo README.md para activar el acceso.";
+  const teamEligible = isTeamUser(signedInUser);
+  $("#auth-screen").hidden = authenticated;
+  $("#role-screen").hidden = !authenticated || !teamEligible || currentView !== "roles";
+  $("#farmer-app").hidden = !authenticated || currentView !== "farmer";
+  $("#team").hidden = !authenticated || !teamEligible || currentView !== "team";
+  $("#team-dashboard").hidden = !authenticated || !teamEligible || currentView !== "team";
+  $("#session-bar").hidden = !authenticated;
+  $("#logout").hidden = !authenticated;
+  $("#session-name").textContent = signedInUser?.displayName || signedInUser?.email || "Sesión activa";
+  if (signedInUser) {
+    const name = signedInUser.displayName?.split(" ")[0] || "agricultor";
+    $("#farmer-name").textContent = name;
+    $("#role-name").textContent = name;
+    $("#team-user").textContent = "Sesión institucional: " + signedInUser.email;
+  }
 }
-window.addEventListener("hashchange", setPage);
-setPage();
+
+function isTeamUser(user) {
+  return Boolean(user?.emailVerified && user.email?.toLowerCase().endsWith("@unicartagena.edu.co"));
+}
 
 function whatsappLink(message) {
   return "https://wa.me/" + contacts.whatsapp + "?text=" + encodeURIComponent(message);
@@ -61,6 +69,9 @@ $("#simulation").addEventListener("submit",(event)=>{event.preventDefault();cons
 function errorText(error) {
  const messages={
   "auth/popup-closed-by-user":"Se cerró la ventana de Google antes de terminar.",
+  "auth/popup-blocked":"Permite las ventanas emergentes para iniciar sesión con Google.",
+  "auth/cancelled-popup-request":"Hay otro inicio de sesión abierto. Inténtalo de nuevo.",
+  "auth/network-request-failed":"No se pudo conectar. Revisa tu conexión e inténtalo otra vez.",
   "auth/unauthorized-domain":"Agrega este dominio en Firebase Authentication > Settings > Authorized domains.",
   "permission-denied":"Firebase rechazó el acceso. Revisa las reglas y el dominio institucional.",
  };
@@ -86,9 +97,30 @@ async function operation(form,callback){const status=$("#team-status");try{await
 $("#add-producer").addEventListener("submit",e=>{e.preventDefault();operation(e.currentTarget,d=>addTeamRecord("producers",{name:d.name,town:d.town,crop:d.crop,hectares:Number(d.hectares)}));});
 $("#add-advance").addEventListener("submit",e=>{e.preventDefault();operation(e.currentTarget,d=>addTeamRecord("entries",{type:"advance",producerId:d.producer,description:d.description,amount:Number(d.amount)}));});
 $("#add-harvest").addEventListener("submit",e=>{e.preventDefault();operation(e.currentTarget,d=>{const gross=Number(d.kg)*Number(d.price),balance=balanceFor(d.producer),deduction=Math.min(gross,balance);return addTeamRecord("entries",{type:"harvest",producerId:d.producer,gross,deduction,payout:gross-deduction,kg:Number(d.kg),price:Number(d.price)});});});
-$("#team-login-form").addEventListener("submit",async e=>{e.preventDefault();if(!configured)return;const button=e.currentTarget.querySelector("button");button.disabled=true;try{const provider=new GoogleAuthProvider();provider.setCustomParameters({hd:"unicartagena.edu.co"});const result=await signInWithPopup(auth,provider);if(!result.user.emailVerified||!result.user.email?.toLowerCase().endsWith("@unicartagena.edu.co")){await signOut(auth);$("#login-status").textContent="Usa una cuenta verificada @unicartagena.edu.co.";return;}location.hash="#equipo";}catch(error){$("#login-status").textContent=errorText(error);}finally{button.disabled=false;}});
+$("#google-signin").addEventListener("click",async()=>{
+ if(!configured){$("#auth-status").textContent="Firebase aún no está configurado.";return;}
+ const button=$("#google-signin");button.disabled=true;$("#auth-status").textContent="Conectando con Google…";
+ try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:"select_account"});await signInWithPopup(auth,provider);}
+ catch(error){$("#auth-status").textContent=errorText(error);}
+ finally{button.disabled=false;}
+});
+$("#open-team").addEventListener("click",async()=>{
+ if(!isTeamUser(signedInUser))return;
+ currentView="team";setPage();
+ try{await refresh();$("#team-status").textContent="Datos actualizados.";}
+ catch(error){$("#team-status").textContent=errorText(error);}
+});
+$("#open-farmer").addEventListener("click",()=>{currentView="farmer";setPage();});
+$("#back-to-roles").addEventListener("click",()=>{if(isTeamUser(signedInUser)){currentView="roles";setPage();}});
 $("#logout").addEventListener("click",()=>signOut(auth));
 if(configured){
  const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getFirestore(app);
- onAuthStateChanged(auth,async user=>{signedInUser=user;if(user){try{await refresh();$("#team-user").textContent="Sesión: "+user.email;}catch(error){$("#team-status").textContent=errorText(error);}}setPage();});
-}else if(location.hash==="#equipo") $("#login-status").textContent="Firebase aún no está configurado. Sigue los pasos de README.md.";
+ onAuthStateChanged(auth,user=>{
+  signedInUser=user;
+  if(!user)currentView="login";
+  else currentView=isTeamUser(user)?"roles":"farmer";
+  setPage();
+ });
+}else{
+ setPage();
+}
