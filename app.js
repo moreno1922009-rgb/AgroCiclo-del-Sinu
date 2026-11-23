@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, reauthenticateWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, onSnapshot, limit, setDoc, where } from "firebase/firestore";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -36,6 +36,8 @@ let chatOpen = false;
 let latestChatSnapshot = null;
 let requestFilter = "pendiente";
 let quoteSequence = 0;
+let gmailAccessToken = "";
+let gmailAccessTokenExpiresAt = 0;
 let currentView = "login";
 const configured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("REEMPLAZAR");
 
@@ -192,7 +194,7 @@ function renderApplications(){
     const outcome=document.createElement("strong");outcome.textContent=application.decision==="aplica"?"Aplica":"No aplica";resultCell.append(outcome);
     if(application.resolutionNote){const note=document.createElement("p");note.className="small";note.textContent=application.resolutionNote;resultCell.append(note);}
     const emailState=document.createElement("p");emailState.className="small muted";emailState.textContent=application.emailNoticeStatus==="enviado"?"Correo enviado":"Correo pendiente de envío";resultCell.append(emailState);
-    const resend=document.createElement("button");resend.type="button";resend.className="button outline small-button";resend.dataset.emailApplication=application.id;resend.textContent=application.emailNoticeStatus==="enviado"?"Reenviar correo":"Enviar correo";resend.addEventListener("click",()=>sendStatusEmail(application.id,resend));resultCell.append(resend);
+    const resend=document.createElement("button");resend.type="button";resend.className="button outline small-button";resend.dataset.emailApplication=application.id;resend.textContent=application.emailNoticeStatus==="enviado"?"Reenviar correo":"Enviar correo";resultCell.append(resend);
    }else{
     const form=document.createElement("form");form.className="resolve-request-form";
     const decision=document.createElement("select");decision.name="decision";decision.required=true;decision.append(option("Selecciona resultado",""),option("Aplica","aplica"),option("No aplica","no_aplica"));
@@ -261,11 +263,25 @@ function buildQuote(event){
  const tbody=tableEl.createTBody();items.forEach(item=>{const tr=tbody.insertRow();[item.name,String(item.quantity),money(item.unitPrice),money(item.quantity*item.unitPrice)].forEach(value=>td(tr,value));});doc.append(tableEl,quoteText("h2","Total estimado: "+money(total),"quote-grand-total"),quoteText("p","Cotización comercial sujeta a disponibilidad y confirmación de condiciones. Este documento no es factura electrónica.","quote-disclaimer"),quoteText("p","AgroCiclo del Sinú S.A.S. · Córdoba, Colombia","quote-footer"));
  doc.hidden=false;$("#print-quote").hidden=false;$("#quote-status").textContent="Cotización preparada. Puedes imprimirla o guardarla como PDF.";
 }
-async function sendStatusEmail(id,button){
+function requestGmailAccessToken(){
+ if(gmailAccessToken&&Date.now()<gmailAccessTokenExpiresAt-60000)return Promise.resolve(gmailAccessToken);
+ const provider=new GoogleAuthProvider();
+ provider.addScope("https://www.googleapis.com/auth/gmail.send");
+ provider.addScope("email");
+ return reauthenticateWithPopup(signedInUser,provider).then(result=>{
+  if(result.user.email?.toLowerCase()!==signedInUser.email?.toLowerCase())throw new Error("Autoriza el mismo correo institucional con el que abriste el panel.");
+  const credential=GoogleAuthProvider.credentialFromResult(result),token=credential?.accessToken;
+  if(!token)throw new Error("Google no entregó permiso de envío. Vuelve a autorizar el correo.");
+  gmailAccessToken=token;gmailAccessTokenExpiresAt=Date.now()+50*60*1000;
+  $("#email-auth-status").textContent="Correo autorizado para esta sesión: "+signedInUser.email;
+  return token;
+ });
+}
+async function sendStatusEmail(id,button,accessToken){
  if(!signedInUser)return;button.disabled=true;$("#team-status").textContent="Enviando respuesta por correo…";
  try{
   const token=await signedInUser.getIdToken();
-  const response=await fetch("/api/send-application-email",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({applicationId:id})});
+  const response=await fetch("/api/send-application-email",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({applicationId:id,googleAccessToken:accessToken})});
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(result.message||"No se pudo enviar el correo.");
   await updateDoc(doc(db,"applications",id),{emailNoticeStatus:"enviado",emailNoticeSentAt:serverTimestamp(),updatedAt:serverTimestamp()});
@@ -277,10 +293,11 @@ async function finalizeApplication(id,form,button){
  if(!["aplica","no_aplica"].includes(decision))return;
  button.disabled=true;$("#team-status").textContent="Guardando respuesta y notificando…";
  try{
+  const accessToken=await requestGmailAccessToken();
   await updateDoc(doc(db,"applications",id),{status:"atendida",decision,resolutionNote,decidedBy:signedInUser.email,decidedAt:serverTimestamp(),updatedAt:serverTimestamp()});
   await refresh();
   const emailButton=$("#application-table button[data-email-application='"+id+"']")||button;
-  await sendStatusEmail(id,emailButton);
+  await sendStatusEmail(id,emailButton,accessToken);
  }catch(error){button.disabled=false;$("#team-status").textContent=error.message||errorText(error);}
 }
 async function refresh(){
@@ -314,6 +331,18 @@ $("#application-table").addEventListener("change",async(event)=>{
  const select=event.target.closest(".request-status");if(!select)return;const id=select.dataset.applicationId,status=select.value,previous=select.dataset.previous;select.disabled=true;
  try{await updateDoc(doc(db,"applications",id),{status,updatedAt:serverTimestamp()});await refresh();$("#team-status").textContent="Estado de solicitud actualizado.";}catch(error){select.value=previous;select.disabled=false;$("#team-status").textContent=errorText(error);}
 });
+$("#authorize-email").addEventListener("click",async(event)=>{
+ const button=event.currentTarget;button.disabled=true;$("#email-auth-status").textContent="Solicitando autorización a Google…";
+ try{await requestGmailAccessToken();$("#email-auth-status").textContent="Correo autorizado para esta sesión: "+signedInUser.email;}
+ catch(error){$("#email-auth-status").textContent=error.message||"No se pudo autorizar el correo.";}
+ finally{button.disabled=false;}
+});
+$("#application-table").addEventListener("click",async(event)=>{
+ const button=event.target.closest("button[data-email-application]");if(!button)return;
+ button.disabled=true;$("#team-status").textContent="Preparando el correo…";
+ try{const accessToken=await requestGmailAccessToken();await sendStatusEmail(button.dataset.emailApplication,button,accessToken);}
+ catch(error){button.disabled=false;$("#team-status").textContent=error.message||"No se pudo autorizar el correo.";}
+});
 document.querySelectorAll("[data-request-filter]").forEach(button=>button.addEventListener("click",()=>{requestFilter=button.dataset.requestFilter;renderApplications();}));
 $("#toggle-team-chat").addEventListener("click",()=>{chatOpen=!chatOpen;setPage();if(chatOpen)$("#team-chat-panel").scrollIntoView({behavior:"smooth",block:"start"});});
 $("#close-team-chat").addEventListener("click",()=>{chatOpen=false;setPage();$("#toggle-team-chat").focus();});
@@ -331,7 +360,7 @@ $("#open-team").addEventListener("click",async()=>{
 });
 $("#open-farmer").addEventListener("click",()=>{stopTeamRealtime();currentView="farmer";setPage();startFarmerRequests();});
 $("#back-to-roles").addEventListener("click",()=>{if(isTeamUser(signedInUser)){stopTeamRealtime();stopFarmerRequests();currentView="roles";setPage();}});
-$("#logout").addEventListener("click",()=>{stopTeamRealtime();stopFarmerRequests();signOut(auth);});
+$("#logout").addEventListener("click",()=>{gmailAccessToken="";gmailAccessTokenExpiresAt=0;stopTeamRealtime();stopFarmerRequests();signOut(auth);});
 $("#team-chat-form").addEventListener("submit",async(event)=>{
  event.preventDefault();const form=event.currentTarget,message=String(new FormData(form).get("message")||"").trim(),status=$("#chat-status");if(!message||!isTeamUser(signedInUser))return;
  const button=form.querySelector("button[type=submit]");button.disabled=true;status.textContent="Enviando…";
@@ -381,7 +410,7 @@ function stopTeamRealtime(){if(presenceHeartbeat)clearInterval(presenceHeartbeat
 if(configured){
  const app=initializeApp(firebaseConfig);auth=getAuth(app);db=getFirestore(app);
  onAuthStateChanged(auth,user=>{
-  if(signedInUser&&signedInUser.uid!==user?.uid){stopTeamRealtime();stopFarmerRequests();}
+  if(signedInUser&&signedInUser.uid!==user?.uid){gmailAccessToken="";gmailAccessTokenExpiresAt=0;stopTeamRealtime();stopFarmerRequests();}
   signedInUser=user;
   if(!user)currentView="login";
   else currentView=isTeamUser(user)?"roles":"farmer";

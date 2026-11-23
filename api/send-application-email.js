@@ -1,11 +1,6 @@
 const PROJECT_ID = "agrociclo-del-sinu";
 const FIREBASE_API_KEY = "AIzaSyCfGk0V8zwRBaL3mA-Q4z3R9qznNj6uvcI";
-
-function escapeHtml(value) {
-  return String(value || "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]);
-}
+const MANAGER_EMAIL = "dmorenom3@unicartagena.edu.co";
 
 function field(document, name) {
   return document?.fields?.[name]?.stringValue ?? "";
@@ -13,6 +8,26 @@ function field(document, name) {
 
 function numberField(document, name) {
   return Number(document?.fields?.[name]?.integerValue ?? document?.fields?.[name]?.doubleValue ?? 0);
+}
+
+function cleanHeader(value) {
+  return String(value || "").replace(/[\r\n]+/g, " ").trim();
+}
+
+function encodeRawMessage(to, replyTo, subject, body) {
+  const subjectHeader = "=?UTF-8?B?" + Buffer.from(subject, "utf8").toString("base64") + "?=";
+  const bodyBase64 = Buffer.from(body, "utf8").toString("base64").match(/.{1,76}/g)?.join("\r\n") || "";
+  const mime = [
+    "To: " + cleanHeader(to),
+    "Reply-To: " + cleanHeader(replyTo),
+    "Subject: " + subjectHeader,
+    "MIME-Version: 1.0",
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    bodyBase64,
+  ].join("\r\n");
+  return Buffer.from(mime, "utf8").toString("base64url");
 }
 
 module.exports = async function handler(request, response) {
@@ -23,102 +38,99 @@ module.exports = async function handler(request, response) {
     return response.status(405).json({ message: "Método no permitido." });
   }
 
-  const match = String(request.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
-  const token = match?.[1];
+  const idToken = String(request.headers.authorization || "").match(/^Bearer\s+(.+)$/i)?.[1];
+  const googleAccessToken = typeof request.body?.googleAccessToken === "string" ? request.body.googleAccessToken : "";
   const applicationId = typeof request.body?.applicationId === "string" ? request.body.applicationId.trim() : "";
-  if (!token || !/^[A-Za-z0-9_-]{10,64}$/.test(applicationId)) {
-    return response.status(400).json({ message: "La sesión o el código de solicitud no son válidos." });
+  if (!idToken || !/^[A-Za-z0-9_-]{10,64}$/.test(applicationId) || googleAccessToken.length < 20 || googleAccessToken.length > 4096) {
+    return response.status(400).json({ message: "La sesión, autorización de Google o solicitud no son válidas." });
   }
 
   try {
-    const identity = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + FIREBASE_API_KEY, {
+    const identityResponse = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + FIREBASE_API_KEY, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: token }),
+      body: JSON.stringify({ idToken }),
     });
-    if (!identity.ok) return response.status(401).json({ message: "La sesión expiró. Vuelve a iniciar sesión." });
-    const identityData = await identity.json();
-    const user = identityData.users?.[0];
+    if (!identityResponse.ok) return response.status(401).json({ message: "La sesión expiró. Vuelve a iniciar sesión." });
+    const identity = await identityResponse.json();
+    const user = identity.users?.[0];
     const email = String(user?.email || "").toLowerCase();
     if (!user?.emailVerified || !/^[^@]+@unicartagena\.edu\.co$/.test(email)) {
       return response.status(403).json({ message: "Solo el equipo institucional puede enviar respuestas." });
     }
 
-    const fromEmail = process.env.RESEND_FROM_EMAIL;
-    const resendKey = process.env.RESEND_API_KEY;
-    if (!fromEmail || !resendKey) {
-      return response.status(503).json({
-        message: "La respuesta quedó guardada, pero falta configurar RESEND_API_KEY y RESEND_FROM_EMAIL en Vercel para activar el correo.",
-      });
+    const googleIdentityResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      headers: { Authorization: "Bearer " + googleAccessToken },
+    });
+    if (!googleIdentityResponse.ok) return response.status(401).json({ message: "La autorización de Gmail venció. Vuelve a conectar tu correo." });
+    const googleIdentity = await googleIdentityResponse.json();
+    if (String(googleIdentity.email || "").toLowerCase() !== email || googleIdentity.email_verified !== true) {
+      return response.status(403).json({ message: "Autoriza el mismo correo institucional con el que abriste el panel." });
     }
 
     const documentUrl = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID +
       "/databases/(default)/documents/applications/" + encodeURIComponent(applicationId);
-    const documentResponse = await fetch(documentUrl, { headers: { Authorization: "Bearer " + token } });
+    const documentResponse = await fetch(documentUrl, { headers: { Authorization: "Bearer " + idToken } });
     if (!documentResponse.ok) return response.status(404).json({ message: "No se encontró la solicitud o no tienes acceso." });
     const document = await documentResponse.json();
     const status = field(document, "status");
     const decision = field(document, "decision");
     if (status !== "atendida" || !["aplica", "no_aplica"].includes(decision)) {
-      return response.status(409).json({ message: "Primero guarda la decisión de la solicitud." });
+      return response.status(409).json({ message: "Primero guarda el resultado de la solicitud." });
     }
 
     const to = field(document, "email");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      return response.status(422).json({ message: "La cuenta de Google del agricultor no contiene un correo válido." });
+      return response.status(422).json({ message: "La solicitud no tiene un correo válido para responder." });
     }
 
     const name = field(document, "name") || "Agricultor";
     const crop = field(document, "crop");
     const town = field(document, "town");
     const note = field(document, "resolutionNote");
-    const decisionText = decision === "aplica" ? "Tu solicitud aplica" : "Tu solicitud no aplica";
+    const applies = decision === "aplica";
+    const subject = applies ? "Tu solicitud sí aplica | AgroCiclo del Sinú" : "Resultado de tu solicitud | AgroCiclo del Sinú";
+    const decisionText = applies
+      ? "Después de revisar la información que compartiste, tu solicitud sí aplica para continuar con el proceso. El equipo se comunicará contigo para revisar disponibilidad y los siguientes pasos."
+      : "Después de revisar la información que compartiste, tu solicitud no aplica a las condiciones actuales de AgroCiclo. Si tienes información adicional o deseas consultar otra opción, responde a este correo.";
     const items = document.fields?.items?.arrayValue?.values || [];
     const products = items.map((item) => {
       const fields = item.mapValue?.fields || {};
       return field({ fields }, "name") + " — " + numberField({ fields }, "quantity") + " " + field({ fields }, "unit");
     }).filter((item) => item !== " — 0 ");
-    const decidedAt = field(document, "decidedAt") || document.fields?.decidedAt?.timestampValue || "sin-fecha";
-    const idempotencyKey = "agrociclo-" + applicationId + "-" + decision + "-" + String(decidedAt).replace(/[^A-Za-z0-9]/g, "").slice(0, 32);
-
-    const html = "<div style=\"font-family:Arial,sans-serif;color:#193e2c;max-width:620px;margin:auto;padding:28px\">" +
-      "<p style=\"letter-spacing:.12em;font-size:12px;font-weight:bold\">AGROCICLO DEL SINÚ</p>" +
-      "<h1 style=\"font-size:25px\">" + escapeHtml(decisionText) + "</h1>" +
-      "<p>Hola " + escapeHtml(name) + ", el equipo revisó tu solicitud de acompañamiento agrícola.</p>" +
-      "<p><b>Cultivo:</b> " + escapeHtml(crop) + "<br><b>Municipio:</b> " + escapeHtml(town) + "</p>" +
-      (products.length ? "<p><b>Productos solicitados:</b><br>" + products.map(escapeHtml).join("<br>") + "</p>" : "") +
-      (note ? "<div style=\"background:#f1f6ed;padding:14px;border-radius:10px\"><b>Respuesta del equipo:</b><br>" + escapeHtml(note) + "</div>" : "") +
-      "<p>Si tienes dudas, responde este correo o escríbenos por WhatsApp al 324 317 5381.</p>" +
-      "<p style=\"color:#657569;font-size:13px\">AgroCiclo del Sinú S.A.S. · Córdoba, Colombia</p></div>";
-    const text = "AgroCiclo del Sinú\n\nHola " + name + ", " + decisionText.toLowerCase() + ".\nCultivo: " + crop +
-      "\nMunicipio: " + town + (products.length ? "\nProductos: " + products.join(", ") : "") +
-      (note ? "\nRespuesta del equipo: " + note : "") +
-      "\n\nDudas: WhatsApp 324 317 5381.";
-
-    const mailResponse = await fetch("https://api.resend.com/emails", {
+    const body = [
+      "AGROCICLO DEL SINÚ S.A.S. · CÓRDOBA",
+      "",
+      "Hola " + name + ",",
+      "",
+      decisionText,
+      "",
+      "Cultivo: " + crop,
+      "Municipio: " + town,
+      ...(products.length ? ["Productos solicitados:", ...products.map((product) => "• " + product)] : []),
+      ...(note ? ["", "Mensaje del colaborador que atendió tu solicitud:", note] : []),
+      "",
+      "Puedes responder directamente a este correo para comunicarte con la persona que revisó tu caso. También puedes escribirnos por WhatsApp al 324 317 5381.",
+      "",
+      "AgroCiclo del Sinú S.A.S. · Córdoba, Colombia",
+    ].join("\n");
+    const raw = encodeRawMessage(to, email, subject, body);
+    const mailResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: {
-        Authorization: "Bearer " + resendKey,
+        Authorization: "Bearer " + googleAccessToken,
         "Content-Type": "application/json",
-        "Idempotency-Key": idempotencyKey,
       },
-      body: JSON.stringify({
-        from: "AgroCiclo del Sinú <" + fromEmail + ">",
-        to: [to],
-        reply_to: "dmorenom3@unicartagena.edu.co",
-        subject: "Actualización de tu solicitud en AgroCiclo",
-        html,
-        text,
-      }),
+      body: JSON.stringify({ raw }),
     });
     if (!mailResponse.ok) {
       const mailError = await mailResponse.json().catch(() => ({}));
-      const message = mailResponse.status === 403 || mailResponse.status === 422
-        ? "El servicio de correo rechazó el remitente. Verifica en Resend que el dominio esté habilitado."
-        : "El servicio de correo no pudo enviar el aviso. Puedes reintentar desde la bandeja de solicitudes.";
-      return response.status(502).json({ message, providerCode: mailError.name || undefined });
+      const message = mailError.error?.status === "PERMISSION_DENIED" || mailResponse.status === 403
+        ? "Google rechazó el envío. Verifica que Gmail API esté habilitada y vuelve a autorizar tu correo."
+        : "Gmail no pudo enviar el aviso. Puedes reintentarlo desde la bandeja de solicitudes.";
+      return response.status(502).json({ message });
     }
-    return response.status(200).json({ sent: true });
+    return response.status(200).json({ sent: true, sender: email });
   } catch {
     return response.status(500).json({ message: "No se pudo procesar el envío. Intenta nuevamente." });
   }

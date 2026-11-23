@@ -46,11 +46,6 @@ El chat y la presencia se comparten en tiempo real únicamente entre cuentas ver
 
 ## Respuesta de solicitudes por correo
 
-El equipo registra la decisión **Aplica** o **No aplica** y una respuesta opcional desde la bandeja. La solicitud queda visible para el agricultor, y el sistema intenta enviar el resultado al correo usado para iniciar sesión con Google. Si el proveedor no está listo, se conserva la decisión y el equipo puede reintentar el envío desde la misma fila.
+El equipo registra la decisión **Aplica** o **No aplica** y una respuesta opcional desde la bandeja. La aplicación redacta el mensaje según el resultado y lo envía desde la cuenta institucional del colaborador que atiende el caso. En su primera autorización, cada colaborador conecta su cuenta desde el panel; los nuevos miembros usan el mismo botón. El permiso y el token de Google se mantienen solo en memoria durante la sesión y no se guardan en Firestore ni en Vercel. Después de recargar o iniciar otra sesión, Google puede volver a pedir autorización.
 
-Para activar la entrega automática, configura en Vercel las variables de entorno de producción y vista previa:
-
-- `RESEND_API_KEY`: clave privada creada desde el servidor de Resend. No debe guardarse en el repositorio ni compartirse en el chat.
-- `RESEND_FROM_EMAIL`: dirección de un dominio verificado en Resend, por ejemplo `notificaciones@tudominio.com`. Verifica el dominio y su autenticación de correo antes de usarlo.
-
-Después de añadir ambas variables, vuelve a desplegar el proyecto. Sin ellas, las decisiones se guardan normalmente, pero el correo muestra el estado pendiente y el botón permite reintentarlo.
+Para habilitar el envío en Google Cloud, activa Gmail API en el proyecto `agrociclo-del-sinu` y permite el alcance OAuth `https://www.googleapis.com/auth/gmail.send` para la aplicación. La organización puede requerir revisión o aprobación del administrador de Google Workspace para ese permiso. Si el permiso no está habilitado, la decisión queda guardada y la fila permite reintentar cuando el correo esté autorizado.
