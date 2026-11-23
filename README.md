@@ -1,37 +1,34 @@
 # AgroCiclo del Sinú
 
-Aplicación web para productores y equipo de AgroCiclo. Los agricultores consultan la zona de atención, reciben orientación por WhatsApp y calculan una liquidación estimada. El equipo inicia sesión con Google institucional y administra productores, financiación de agroinsumos y liquidaciones en Cloud Firestore.
+Aplicación web adaptable a teléfonos, tabletas y computadores para productores y equipo de AgroCiclo. Toda persona inicia sesión con Google. Las cuentas normales de Gmail entran al espacio de agricultor; las cuentas verificadas `@unicartagena.edu.co` reciben además la opción de abrir el panel interno.
 
-## Tecnologías
+## Funciones
 
-- HTML, CSS y JavaScript nativo
-- Firebase Authentication con Google
-- Cloud Firestore con reglas que validan el dominio institucional en el servidor
-- Vercel para alojamiento web
-- Firebase Hosting como alternativa
+- Consulta inicial de atención por municipio, cultivo, área e insumos. El agricultor revisa el mensaje y decide si lo envía por WhatsApp.
+- Simulador de liquidación: estima el descuento por insumos y el saldo de una cosecha.
+- Panel institucional para registrar productores, financiación y liquidaciones.
+- Autenticación de Google con Firebase y registros internos en Cloud Firestore.
+- Contactos directos a Instagram y WhatsApp.
 
-## Proyecto Firebase
+## Proyecto conectado
 
-El proyecto Firebase ya está creado con ID `agrociclo-del-sinu`. La app web está registrada y su configuración pública se encuentra en `firebase-config.js`. Cloud Firestore está en la región `southamerica-east1` (São Paulo), con reglas de producción que permiten acceso solo a cuentas autenticadas, verificadas y del dominio `unicartagena.edu.co`. Estas cuentas pueden leer y crear registros; la edición y eliminación están bloqueadas.
+- Firebase: `agrociclo-del-sinu`
+- Sitio de producción: <https://agrociclo-del-sinu.vercel.app>
+- Repositorio: <https://github.com/moreno1922009-rgb/AgroCiclo-del-Sinu>
+- La rama `main` está conectada con Vercel para desplegar los cambios de GitHub.
 
-En Authentication → Método de acceso, habilita Google y elige el correo empresarial de soporte que se mostrará a los usuarios en la pantalla de inicio de sesión. Después de desplegar la app, agrega el dominio `vercel.app` asignado por Vercel a Authentication → Configuración → Dominios autorizados.
+La configuración pública del cliente está en `firebase-config.js`. La seguridad no depende de ocultar esa configuración: Firestore valida cada acceso en `firestore.rules`. Solo cuentas autenticadas, verificadas y del dominio institucional pueden consultar o crear registros internos; no se permite modificarlos ni eliminarlos desde el cliente.
 
-## GitHub y despliegue
-
-Repositorio: [AgroCiclo-del-Sinu](https://github.com/moreno1922009-rgb/AgroCiclo-del-Sinu) (privado).
-
-Conecta la rama `main` con Vercel y usa la configuración para sitio estático: framework Other, sin comandos de instalación ni compilación, y sin directorio de salida. Los siguientes cambios en `main` se publicarán automáticamente.
-
-No subas claves privadas ni credenciales de cuentas de servicio. La configuración web de Firebase es pública y el acceso a datos se protege en las reglas de Firestore.
-
-## Datos
-
-Los registros del equipo se guardan en Firestore. Los datos de la consulta pública no se guardan. El formulario abre WhatsApp con la información ingresada para que el agricultor decida si envía el mensaje. Las imágenes son parte del proyecto. Instagram y WhatsApp se configuran en `app.js`.
-
-## Prueba local
+## Probar localmente
 
 Sirve la carpeta con un servidor estático, por ejemplo:
 
-    python -m http.server 8000
+```sh
+python -m http.server 8000
+```
 
-Abre http://localhost:8000. Agrega `localhost` a los dominios autorizados de Firebase Authentication antes de iniciar sesión.
+Abre <http://localhost:8000>. Para iniciar sesión en local, agrega `localhost` a los dominios autorizados en Firebase Authentication.
+
+## Datos del agricultor
+
+El formulario de consulta se prepara en el navegador y crea un enlace de WhatsApp con los datos ingresados. No guarda esa solicitud en Firestore. El envío solo ocurre si el agricultor pulsa el enlace y confirma el mensaje en WhatsApp.
