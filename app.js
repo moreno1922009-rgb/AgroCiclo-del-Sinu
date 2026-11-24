@@ -39,6 +39,7 @@ let quoteSequence = 0;
 let gmailAccessToken = "";
 let gmailAccessTokenExpiresAt = 0;
 const emailErrors = new Map();
+let scrollRevealObserver = null;
 let currentView = "login";
 const configured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("REEMPLAZAR");
 
@@ -80,6 +81,7 @@ function setPage() {
   $("#team-chat-panel").hidden = !authenticated || !teamEligible || currentView !== "team" || !chatOpen;
   const chatToggle=$("#toggle-team-chat"); if(chatToggle){chatToggle.hidden=!authenticated || !teamEligible || currentView!=="team";chatToggle.setAttribute("aria-expanded",String(chatOpen));chatToggle.textContent=chatOpen?"Cerrar chat del equipo":"Abrir chat del equipo";}
   $("#session-bar").hidden = !authenticated;
+  $("#farmer-nav").hidden = !authenticated || currentView !== "farmer";
   $("#logout").hidden = !authenticated;
   $("#session-name").textContent = signedInUser?.displayName || signedInUser?.email || "Sesión activa";
   if (signedInUser) {
@@ -88,6 +90,16 @@ function setPage() {
     $("#role-name").textContent = name;
     $("#team-user").textContent = teamRole(signedInUser) + " · " + signedInUser.email;
   }
+  if(authenticated && currentView === "farmer") revealFarmerSections();
+}
+
+function revealFarmerSections(){
+ if(!("IntersectionObserver" in window)||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ if(!scrollRevealObserver)scrollRevealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add("is-visible");scrollRevealObserver.unobserve(entry.target);}}),{threshold:.12,rootMargin:"0px 0px -35px 0px"});
+ document.querySelectorAll("#farmer .hero,#farmer .steps,#farmer .about-story,#farmer .crop-showcase,#consulta > section,#consulta > aside > section,.farmer-requests").forEach((element,index)=>{
+  if(element.dataset.scrollRevealReady)return;
+  element.dataset.scrollRevealReady="true";element.style.setProperty("--reveal-delay",Math.min(index%3,2)*90+"ms");element.classList.add("scroll-reveal");scrollRevealObserver.observe(element);
+ });
 }
 
 function isTeamUser(user) {

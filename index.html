@@ -14,6 +14,7 @@
 <body>
 <header class="top"><div class="wrap top-inner">
 <a href="#" class="brand" aria-label="AgroCiclo del Sinú"><span class="brand-icon" aria-hidden="true"></span><span>AgroCiclo<strong> del Sinú</strong><small>S.A.S. · Córdoba, Colombia</small></span></a>
+<nav id="farmer-nav" class="site-nav" aria-label="Navegación del espacio agricultor" hidden><a href="#farmer-about">La empresa</a><a href="#crop-showcase">Cultivos</a><a href="#consulta">Solicitar</a></nav>
 <div class="session-bar" id="session-bar" hidden><span id="session-name"></span><button id="logout" class="button outline" type="button">Cerrar sesión</button></div>
 </div></header>
 <main class="wrap">
@@ -39,21 +40,23 @@
 <section class="card farmer-requests"><div class="inbox-heading"><div><p class="eyebrow section-kicker">SEGUIMIENTO PERSONAL</p><h2>Mis solicitudes</h2><p class="muted small">Consulta el avance y la respuesta del equipo desde aquí.</p></div></div><div id="farmer-requests-list" aria-live="polite"><p class="muted">Cargando tus solicitudes…</p></div></section>
 <section id="farmer">
   <div class="hero">
-    <div class="hero-content"><p class="eyebrow"><span></span> AGROCICLO DEL SINÚ</p><h1>Insumos hoy.<br><em>Paga con tu cosecha.</em></h1>
+    <div class="hero-content"><p class="eyebrow"><span></span> DE CÓRDOBA, PARA EL CAMPO</p><h1>Insumos hoy.<br><em>Paga con tu cosecha.</em></h1>
     <p>Consulta si puedes solicitar financiación de agroinsumos para tu cultivo. Cuando AgroCiclo compra tu cosecha, descuenta lo financiado y te entrega el saldo.</p>
-    <a class="button primary" href="#consulta">Consultar si puedo aplicar</a></div>
+    <a class="button primary" href="#consulta">Consultar si puedo aplicar <span aria-hidden="true">↗</span></a></div>
     <div class="hero-art" role="img" aria-label="Agricultor revisando el maíz en un cultivo de Córdoba"></div>
+    <div class="hero-caption"><span>AGROCICLO DEL SINÚ</span><span>DESDE LA SIEMBRA HASTA LA COSECHA</span></div>
   </div>
+  <div class="field-ribbon" aria-label="Acompañamos cada ciclo agrícola"><div class="field-ribbon-track"><span>TIERRA FÉRTIL</span><i>✳</i><span>INSUMOS A TIEMPO</span><i>✳</i><span>COSECHAS QUE AVANZAN</span><i>✳</i><span>CAMPO CORDOBÉS</span><i>✳</i><span>TIERRA FÉRTIL</span><i>✳</i><span>INSUMOS A TIEMPO</span><i>✳</i><span>COSECHAS QUE AVANZAN</span><i>✳</i><span>CAMPO CORDOBÉS</span><i>✳</i></div></div>
   <div class="steps" aria-label="Cómo funciona">
    <article><span class="step-mark" aria-hidden="true">01</span><div><h2>Consulta</h2><p>Cuéntanos sobre tu cultivo.</p></div></article>
    <article><span class="step-mark" aria-hidden="true">02</span><div><h2>Solicita insumos</h2><p>AgroCiclo revisa tu caso.</p></div></article>
    <article><span class="step-mark" aria-hidden="true">03</span><div><h2>Liquida tu cosecha</h2><p>Recibe el saldo después del descuento.</p></div></article>
   </div>
-  <section class="about-story">
+  <section class="about-story" id="farmer-about">
    <div><p class="eyebrow section-kicker">QUIÉNES SOMOS</p><h2>Un ciclo más cercano para el campo cordobés.</h2><p>En AgroCiclo del Sinú conectamos el acceso a agroinsumos con la cosecha. Queremos que cada productor pueda consultar sus opciones con claridad y recibir acompañamiento durante el proceso.</p></div>
    <aside class="story-note"><span aria-hidden="true">🌱</span><h3>De la siembra a la cosecha</h3><p>La idea es sencilla: organizar los insumos que necesita tu cultivo y revisar contigo cómo se liquida el saldo cuando se comercializa la cosecha.</p></aside>
   </section>
-  <section class="crop-showcase"><div class="section-heading"><p class="eyebrow section-kicker">NUESTRO TERRITORIO</p><h2>Cultivos que hacen parte de Córdoba</h2><p class="muted">Maíz, arroz, frijol, yuca y ñame, entre otros. Selecciona tu cultivo para ver opciones de insumos habituales.</p></div><div class="crop-chips"><span>🌽 Maíz</span><span>🌾 Arroz</span><span>🫘 Frijol</span><span>🥔 Yuca</span><span>🌿 Ñame</span></div></section>
+  <section class="crop-showcase" id="crop-showcase"><div class="section-heading"><p class="eyebrow section-kicker">NUESTRO TERRITORIO</p><h2>Cultivos que hacen parte de Córdoba</h2><p class="muted">Maíz, arroz, frijol, yuca y ñame, entre otros. Selecciona tu cultivo para ver opciones de insumos habituales.</p></div><div class="crop-chips"><span>🌽 Maíz</span><span>🌾 Arroz</span><span>🫘 Frijol</span><span>🥔 Yuca</span><span>🌿 Ñame</span></div></section>
   <div class="split" id="consulta">
     <section class="card">
      <p class="eyebrow section-kicker">FINANCIACIÓN DE AGROINSUMOS</p>
